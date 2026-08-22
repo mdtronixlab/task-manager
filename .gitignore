@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+
+# SQLite database and local dev artifacts
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+apps/api/service-account.json

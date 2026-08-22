@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OTM Admin - Dashboard</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Theme Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error": "#690005",
+                    "surface-container": "#1d1f29",
+                    "on-primary-fixed": "#001452",
+                    "on-tertiary": "#611300",
+                    "surface-variant": "#32343f",
+                    "inverse-primary": "#004ced",
+                    "success": "#10B981",
+                    "surface-container-highest": "#32343f",
+                    "tertiary-fixed-dim": "#ffb4a1",
+                    "on-tertiary-fixed-variant": "#891e00",
+                    "on-tertiary-fixed": "#3c0800",
+                    "on-secondary-container": "#a9bad3",
+                    "on-primary-fixed-variant": "#0038b6",
+                    "on-secondary": "#213145",
+                    "surface-bright": "#373943",
+                    "primary-container": "#0052ff",
+                    "error-container": "#93000a",
+                    "on-error-container": "#ffdad6",
+                    "accent-teal": "#2DD4BF",
+                    "warning": "#F59E0B",
+                    "primary-fixed-dim": "#b7c4ff",
+                    "on-primary": "#002682",
+                    "tertiary-fixed": "#ffdbd2",
+                    "inverse-on-surface": "#2e303a",
+                    "on-secondary-fixed": "#0b1c30",
+                    "on-background": "#e1e1ef",
+                    "outline": "#8d90a2",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "on-surface": "#e1e1ef",
+                    "background": "#020617",
+                    "primary": "#b7c4ff",
+                    "surface-tint": "#b7c4ff",
+                    "primary-fixed": "#dde1ff",
+                    "outline-variant": "#434656",
+                    "on-tertiary-container": "#ffddd5",
+                    "secondary": "#b7c8e1",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "on-primary-container": "#dfe3ff",
+                    "surface-container-high": "#282934",
+                    "tertiary-container": "#bf3003",
+                    "on-surface-variant": "#c3c5d9",
+                    "surface-container-low": "#191b25",
+                    "secondary-container": "#3a4a5f",
+                    "error": "#EF4444",
+                    "inverse-surface": "#e1e1ef",
+                    "surface-container-lowest": "#0c0e17",
+                    "tertiary": "#ffb4a1",
+                    "surface": "#0F172A",
+                    "surface-dim": "#11131c",
+                    "secondary-fixed": "#d3e4fe"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "space-xs": "4px",
+                    "unit": "4px",
+                    "gutter": "24px",
+                    "margin-desktop": "48px",
+                    "space-sm": "8px",
+                    "margin-mobile": "16px",
+                    "space-xl": "32px",
+                    "space-md": "16px",
+                    "space-lg": "24px"
+            },
+            "fontFamily": {
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "label-md": [
+                            "JetBrains Mono"
+                    ],
+                    "headline-lg-mobile": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-lg": [
+                            "Hanken Grotesk"
+                    ],
+                    "headline-xl": [
+                            "Hanken Grotesk"
+                    ],
+                    "label-sm": [
+                            "JetBrains Mono"
+                    ],
+                    "headline-md": [
+                            "Hanken Grotesk"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-md": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-xl": [
+                            "48px",
+                            {
+                                    "lineHeight": "56px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "label-sm": [
+                            "10px",
+                            {
+                                    "lineHeight": "14px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+<!-- TopNavBar -->
+<nav class="hidden md:flex bg-surface/80 dark:bg-surface/80 backdrop-blur-md fixed top-0 right-0 w-[calc(100%-16rem)] z-40 bg-surface/80 border-b border-outline-variant flex justify-between items-center px-gutter h-16">
+<div class="flex items-center gap-space-md">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">Task Manager</span>
+</div>
+<div class="flex items-center gap-space-md">
+<!-- Search Bar -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size: 20px;">search</span>
+<input class="bg-surface-container-high border-outline-variant text-on-surface rounded-full py-2 pl-10 pr-4 focus:border-primary focus:ring-1 focus:ring-primary w-64 transition-all" placeholder="Search..." type="text"/>
+</div>
+<!-- Trailing Icons -->
+<button class="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-100 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors scale-95 active:scale-100 transition-transform">
+<span class="material-symbols-outlined">help</span>
+</button>
+<!-- Profile -->
+<img alt="User Profile" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A clean, minimalist abstract geometric pattern serving as a high-end corporate user avatar. The image features soft intersecting circles and squares in deep slate blue and electric teal against a dark background, evoking a sense of modern precision and professional trust. High-resolution, digital art style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAahc_kNYNuMUTZ4J1v-f1edBAC1Vd3AYNAeVVCmvGO2B9In5JtkvqCIIM8o-gKwcMR9LtwatH_MclDcgsFKC_flCJCEC5c8eacaT_As7RWDQdaSBN-zUwiW9dK0QkXzLHgC3VrXIAVJcMqbK-H35PqcToAfCi6gzC7PIgatrbChH94Ok1Z4lV1tl-IkqHTiVlidmcKHfZnal_6jlrxwhrxsJG-4MUCLsJJV0hBOg_c0r7134_kQBp7"/>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="hidden md:flex bg-surface-container dark:bg-surface-container h-screen w-64 fixed left-0 top-0 bg-surface-container-low border-r border-outline-variant flex flex-col h-full py-space-lg">
+<!-- Header -->
+<div class="px-gutter mb-space-xl flex items-center gap-space-sm">
+<img alt="Organization Logo" class="w-10 h-10 rounded-lg border border-outline-variant object-cover" data-alt="A sleek, modern corporate logo design for an enterprise suite. The logo consists of sharp, minimalist geometric shapes forming an abstract 'O' and 'T' in vibrant primary blue and crisp white. It is set against a very dark slate background, conveying authority, security, and high-end technological sophistication." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8RJIq5KWT-bah2QVTZhMj-Uq3hBeP90P-altGUxz-TtcUSiAkuEhS908RklPLHTVad9gkp0Z5TxRxkiJ3Vhv3iqivlewcscs1l8-qthqooVo9_kj9ERim7O8JCu1L8bQwNAR36NBogBrzzl_NlV1XPPbmdk78F4b6HxiMqZupSSbc5GfXbVs5pHZI5glTPGhXx2xewCHNLNx_t2V0iHf5f4jKffgmAngyiOD2fDdq2MgkZMKLPxNd"/>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">OTM Admin</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Enterprise Suite</p>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<nav class="flex-1 px-space-md space-y-space-xs">
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-primary font-bold border-r-2 border-primary hover:bg-surface-container-high transition-colors cursor-pointer transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant font-body-md hover:bg-surface-container-high transition-colors cursor-pointer transition-all duration-200" href="#">
+<span class="material-symbols-outlined">assignment</span>
+                Tasks
+            </a>
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant font-body-md hover:bg-surface-container-high transition-colors cursor-pointer transition-all duration-200" href="#">
+<span class="material-symbols-outlined">group</span>
+                Staff
+            </a>
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant font-body-md hover:bg-surface-container-high transition-colors cursor-pointer transition-all duration-200" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+                Reports
+            </a>
+<a class="flex items-center gap-space-sm px-space-sm py-2 rounded-lg text-on-surface-variant font-body-md hover:bg-surface-container-high transition-colors cursor-pointer transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+</nav>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 pt-16 md:pt-24 p-gutter md:px-margin-desktop md:py-space-xl max-w-[1440px] mx-auto min-h-screen pb-24 md:pb-8">
+<!-- Header Section -->
+<header class="mb-space-xl flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-space-xs">Organizational Overview</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Real-time performance metrics and task distribution.</p>
+</div>
+<div class="hidden sm:flex gap-space-sm">
+<button class="bg-primary-container text-on-primary-container hover:brightness-110 px-4 py-2 rounded-lg font-label-md text-label-md transition-all flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 16px;">download</span>
+                    Export Report
+                </button>
+</div>
+</header>
+<!-- KPI Bento Grid -->
+<section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md mb-space-xl">
+<!-- Total Staff -->
+<div class="bg-surface border border-outline-variant/30 rounded-xl p-space-md flex flex-col justify-between h-32 relative overflow-hidden group hover:border-primary/50 transition-colors">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-primary-container/10 rounded-full blur-2xl group-hover:bg-primary-container/20 transition-all"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">Total Staff</span>
+<span class="material-symbols-outlined text-primary">group</span>
+</div>
+<div>
+<h3 class="font-headline-xl text-headline-xl text-on-surface">142</h3>
+<p class="font-label-sm text-label-sm text-success flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined" style="font-size: 12px;">trending_up</span>
+                        +5% this month
+                    </p>
+</div>
+</div>
+<!-- Total Tasks -->
+<div class="bg-surface border border-outline-variant/30 rounded-xl p-space-md flex flex-col justify-between h-32 relative overflow-hidden group hover:border-primary/50 transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">Total Tasks</span>
+<span class="material-symbols-outlined text-secondary">assignment</span>
+</div>
+<div>
+<h3 class="font-headline-xl text-headline-xl text-on-surface">3,204</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Active quarter</p>
+</div>
+</div>
+<!-- Tasks Done -->
+<div class="bg-surface border border-outline-variant/30 rounded-xl p-space-md flex flex-col justify-between h-32 relative overflow-hidden group hover:border-primary/50 transition-colors">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">Tasks Done</span>
+<span class="material-symbols-outlined text-success">check_circle</span>
+</div>
+<div>
+<h3 class="font-headline-xl text-headline-xl text-on-surface">2,841</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">88.6% completion</p>
+</div>
+</div>
+<!-- Blocked/Pending Split -->
+<div class="grid grid-rows-2 gap-space-sm h-32">
+<div class="bg-surface border border-outline-variant/30 rounded-lg px-space-md py-space-sm flex justify-between items-center hover:border-warning/50 transition-colors">
+<span class="font-label-md text-label-md text-on-surface-variant flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-warning"></div>
+                         Pending
+                     </span>
+<span class="font-headline-md text-headline-md text-on-surface">312</span>
+</div>
+<div class="bg-surface border border-outline-variant/30 rounded-lg px-space-md py-space-sm flex justify-between items-center hover:border-error/50 transition-colors">
+<span class="font-label-md text-label-md text-on-surface-variant flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-error"></div>
+                         Blocked
+                     </span>
+<span class="font-headline-md text-headline-md text-on-surface">51</span>
+</div>
+</div>
+</section>
+<!-- Progress Overview -->
+<section class="bg-surface border border-outline-variant/30 rounded-xl p-space-lg mb-space-xl relative overflow-hidden">
+<!-- Subtle backdrop blur effect behind text -->
+<div class="absolute inset-0 bg-gradient-to-r from-surface-container/50 to-transparent pointer-events-none"></div>
+<div class="relative z-10 flex flex-col md:flex-row justify-between md:items-end gap-space-md mb-space-md">
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Q3 Objectives Progress</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Overall organizational task completion rate vs. target.</p>
+</div>
+<div class="text-right">
+<span class="font-headline-xl text-headline-xl text-accent-teal">88.6%</span>
+<span class="font-label-md text-label-md text-on-surface-variant block">Target: 92.0%</span>
+</div>
+</div>
+<!-- Progress Bar -->
+<div class="relative z-10 w-full h-3 bg-surface-container-high rounded-full overflow-hidden border border-outline-variant/20">
+<div class="h-full bg-accent-teal rounded-full transition-all duration-1000 ease-in-out" style="width: 88.6%;"></div>
+</div>
+</section>
+<!-- Staff Performance Table -->
+<section class="bg-surface border border-outline-variant/30 rounded-xl overflow-hidden">
+<div class="p-space-md border-b border-outline-variant/30 flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md text-on-surface">Staff Performance</h3>
+<button class="text-primary hover:text-primary-fixed transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low font-label-md text-label-md text-on-surface-variant border-b border-outline-variant/30">
+<th class="py-space-sm px-space-md font-medium">Staff Member</th>
+<th class="py-space-sm px-space-md font-medium">Department</th>
+<th class="py-space-sm px-space-md font-medium text-right">Done</th>
+<th class="py-space-sm px-space-md font-medium text-right">Pending</th>
+<th class="py-space-sm px-space-md font-medium">Status</th>
+<th class="py-space-sm px-space-md font-medium">Completion Rate</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/10">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors group cursor-pointer">
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-3">
+<img alt="Elena Rostova" class="w-8 h-8 rounded-full bg-surface-container" data-alt="A small, professional avatar placeholder featuring a clean geometric abstraction in deep blue tones. The design represents a high-level executive or senior manager in a modern corporate software interface. Sharp lines, minimalist, high contrast on dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBY7lJzfMaEVDFhNGu6UamhpmJeoEH3TWjJPPCMtNF9i_ciR52SzhQpeAvzO4-y_-Pne7zN8wXX81s5JMWUhHW1Ayjja_t2fIgmV6dyUSrjCoBh0dSU-KDikHxlIHyJeWdUycSi60iL5CbkbAD5_job0y4rkOa19S4pf7_bSGTuFsZGteujMk0OlBgYhueOMNqc-2TsC1M6q6MmYCZJyd3XaloDaxKv0GjqzsEqRC5MpiVrq9qSi9Qp"/>
+<span class="font-medium text-on-surface group-hover:text-primary transition-colors">Elena Rostova</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-on-surface-variant">Engineering</td>
+<td class="py-space-sm px-space-md text-right">142</td>
+<td class="py-space-sm px-space-md text-right text-on-surface-variant">12</td>
+<td class="py-space-sm px-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-success/10 text-success font-label-sm text-label-sm border border-success/20">
+<span class="w-1.5 h-1.5 rounded-full bg-success"></span> On Track
+                                </span>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-success" style="width: 92%;"></div>
+</div>
+<span class="font-label-md text-label-md w-8 text-right">92%</span>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors group cursor-pointer">
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-3">
+<img alt="Marcus Chen" class="w-8 h-8 rounded-full bg-surface-container" data-alt="A small, professional avatar placeholder featuring a clean geometric abstraction in slate grey and amber tones. The design represents a middle manager or team lead in a modern corporate software interface. Sharp lines, minimalist, high contrast on dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_p4y3egcDKcH4cX9LoksoWvoeis-QilmbLe_EAKhuW5B39rjD2hVunGkmYpTxgb7lYazYIqqFNca538hHlExd-HdyhXY_po_D5YPHBE0PJ2iWd84sT3Si1hl4mkJbi637vS7KAvKQGzuaFcZbTUQKoxQ0UHOiIKXDd5y7oCU_iYTUlRcGpRhel7I-ZYueDkz68bpbzTdubkhQPWfeJIm7y58rjsLXAnvXLIUZ2RXP3edi459OpAEq"/>
+<span class="font-medium text-on-surface group-hover:text-primary transition-colors">Marcus Chen</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-on-surface-variant">Design</td>
+<td class="py-space-sm px-space-md text-right">84</td>
+<td class="py-space-sm px-space-md text-right text-on-surface-variant">28</td>
+<td class="py-space-sm px-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-warning/10 text-warning font-label-sm text-label-sm border border-warning/20">
+<span class="w-1.5 h-1.5 rounded-full bg-warning"></span> At Risk
+                                </span>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-warning" style="width: 75%;"></div>
+</div>
+<span class="font-label-md text-label-md w-8 text-right">75%</span>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors group cursor-pointer">
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-md text-label-md font-bold">SJ</div>
+<span class="font-medium text-on-surface group-hover:text-primary transition-colors">Sarah Jenkins</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-on-surface-variant">Marketing</td>
+<td class="py-space-sm px-space-md text-right">105</td>
+<td class="py-space-sm px-space-md text-right text-on-surface-variant">5</td>
+<td class="py-space-sm px-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-success/10 text-success font-label-sm text-label-sm border border-success/20">
+<span class="w-1.5 h-1.5 rounded-full bg-success"></span> On Track
+                                </span>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-success" style="width: 95%;"></div>
+</div>
+<span class="font-label-md text-label-md w-8 text-right">95%</span>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors group cursor-pointer">
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-3">
+<img alt="David Okafor" class="w-8 h-8 rounded-full bg-surface-container" data-alt="A small, professional avatar placeholder featuring a clean geometric abstraction in deep red and dark grey tones. The design represents an operations staff member in a modern corporate software interface. Sharp lines, minimalist, high contrast on dark background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQZDLdubA6Gnt-BMP9MyeXCyVMNl6kdS0HiVfs5gAY_G2UOyTFeDiwiCNhJi83_GBCc1ih5PVMlsSj4ycZ32Im_NR-AwfbGtXQxN-pD94PzuXJz6iAvgZRQIaIlt1niBGdBcJQjGecsskSc48GFnYWM5SFMVJUA8sArEIVG4aDZ46PKSTI54b0UTE4eXJqMaQkRphWmOCaEYbdBk62CGUfuOezbRG-svFRK0tc_a9g9E-9-P67NTDS"/>
+<span class="font-medium text-on-surface group-hover:text-primary transition-colors">David Okafor</span>
+</div>
+</td>
+<td class="py-space-sm px-space-md text-on-surface-variant">Operations</td>
+<td class="py-space-sm px-space-md text-right">42</td>
+<td class="py-space-sm px-space-md text-right text-on-surface-variant">35</td>
+<td class="py-space-sm px-space-md">
+<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-error/10 text-error font-label-sm text-label-sm border border-error/20">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span> Blocked
+                                </span>
+</td>
+<td class="py-space-sm px-space-md">
+<div class="flex items-center gap-2">
+<div class="w-24 h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-error" style="width: 54%;"></div>
+</div>
+<span class="font-label-md text-label-md w-8 text-right">54%</span>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-space-sm border-t border-outline-variant/30 flex justify-center">
+<button class="font-label-md text-label-md text-primary hover:text-primary-fixed transition-colors py-2">View All Staff</button>
+</div>
+</section>
+</main>
+</body></html>

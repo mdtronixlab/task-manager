@@ -1,0 +1,302 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap');
+@import 'tailwindcss';
+
+/* ==========================================================================
+   OTM Design Tokens
+   Source of truth: documents/UI-UX Design System — Organisation Task
+   Manager.md (design.md). Concrete values seeded from the "Lumina Finance"
+   theme generated in Stitch (stitch-export/design-system/design-system.md).
+
+   design.md §4 calls for a light theme first with dark added later; the
+   Stitch screens were produced in dark mode. Per project decision
+   (2026-08-21, recorded in memory.md §23), BOTH palettes are wired here as
+   CSS custom properties, with dark as the current default. Switch themes at
+   runtime by setting `data-theme="light"` on <html> — no dark:/light:
+   utility variants are needed anywhere else because every component should
+   consume the semantic tokens below (bg-surface, text-on-surface, etc.)
+   rather than raw Tailwind colors.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --color-background: #020617;
+  --color-on-background: #e1e1ef;
+  --color-surface: #0f172a;
+  --color-surface-dim: #11131c;
+  --color-surface-bright: #373943;
+  --color-surface-container-lowest: #0c0e17;
+  --color-surface-container-low: #191b25;
+  --color-surface-container: #1d1f29;
+  --color-surface-container-high: #282934;
+  --color-surface-container-highest: #32343f;
+  --color-on-surface: #e1e1ef;
+  --color-on-surface-variant: #c3c5d9;
+  --color-outline: #8d90a2;
+  --color-outline-variant: #434656;
+
+  /* Brand */
+  --color-primary: #b7c4ff;
+  --color-on-primary: #002682;
+  --color-primary-container: #0052ff;
+  --color-on-primary-container: #dfe3ff;
+
+  --color-secondary: #b7c8e1;
+  --color-on-secondary: #213145;
+  --color-secondary-container: #3a4a5f;
+  --color-on-secondary-container: #a9bad3;
+
+  --color-tertiary: #ffb4a1;
+  --color-on-tertiary: #611300;
+  --color-tertiary-container: #bf3003;
+  --color-on-tertiary-container: #ffddd5;
+
+  /* Semantic (design.md §5) */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-accent-teal: #2dd4bf;
+
+  /* Status/priority badge tones (design.md §6–7): text + subtle background
+     pair per tone, so status is never colour-only (rules.md §10). */
+  --color-tone-primary-bg: rgb(183 196 255 / 16%);
+  --color-tone-primary-text: #b7c4ff;
+  --color-tone-success-bg: rgb(16 185 129 / 16%);
+  --color-tone-success-text: #34d399;
+  --color-tone-warning-bg: rgb(245 158 11 / 16%);
+  --color-tone-warning-text: #fbbf24;
+  --color-tone-error-bg: rgb(239 68 68 / 16%);
+  --color-tone-error-text: #f87171;
+  --color-tone-neutral-bg: rgb(141 144 162 / 16%);
+  --color-tone-neutral-text: #c3c5d9;
+
+  /* Chart series (dataviz skill palette.md — validated with
+     scripts/validate_palette.js for this app's dark/light surfaces).
+     Distinct from the status tones above: a categorical chart mark needs
+     different lightness/chroma than a small badge, so --color-primary
+     itself fails the validator's lightness/chroma checks here even though
+     it's fine for text/badges. --color-chart-series-2 sits close to
+     --color-success in hue so "Completed" still reads as the same green
+     as everywhere else in the app. */
+  --color-chart-series-1: #3987e5;
+  --color-chart-series-2: #199e70;
+
+  /* Brand mark — a fixed vivid blue for the logo specifically.
+     --color-primary/--color-primary-container invert which one is vivid
+     vs. pale between dark and light mode (M3 tonal-role convention, tuned
+     for text/button legibility); a logo needs to look like the same brand
+     color in both themes instead, so it gets its own token. Same value as
+     --color-chart-series-1 (already validated as visible in both modes)
+     under a name that reflects this use, not chart-specific meaning. */
+  --color-brand: #3987e5;
+
+  /* Fonts */
+  --font-headline: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-label: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+/* Light palette (design.md §4) — wired, not yet default. Values derived
+   from the same brand family as the dark theme above (Stitch only exported
+   dark), keeping the primary blue and status colours consistent across
+   modes. Activate with <html data-theme="light">. */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --color-background: #f8fafc;
+  --color-on-background: #0f172a;
+  --color-surface: #ffffff;
+  --color-surface-dim: #e2e8f0;
+  --color-surface-bright: #ffffff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f8fafc;
+  --color-surface-container: #f1f5f9;
+  --color-surface-container-high: #e7ecf3;
+  --color-surface-container-highest: #dde3ec;
+  --color-on-surface: #0f172a;
+  --color-on-surface-variant: #475569;
+  --color-outline: #94a3b8;
+  --color-outline-variant: #e2e8f0;
+
+  --color-primary: #0052ff;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #dfe3ff;
+  --color-on-primary-container: #001452;
+
+  --color-secondary: #475569;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #e2e8f0;
+  --color-on-secondary-container: #1e293b;
+
+  --color-tertiary: #bf3003;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #ffdbd2;
+  --color-on-tertiary-container: #3c0800;
+
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  --color-on-error: #ffffff;
+  --color-error-container: #fee2e2;
+  --color-on-error-container: #93000a;
+  --color-accent-teal: #0d9488;
+
+  --color-tone-primary-bg: #dfe3ff;
+  --color-tone-primary-text: #0038b6;
+  --color-tone-success-bg: #d1fae5;
+  --color-tone-success-text: #047857;
+  --color-tone-warning-bg: #fef3c7;
+  --color-tone-warning-text: #b45309;
+  --color-tone-error-bg: #fee2e2;
+  --color-tone-error-text: #b91c1c;
+  --color-tone-neutral-bg: #f1f5f9;
+  --color-tone-neutral-text: #475569;
+
+  /* Chart series — see the :root block above for why these differ from
+     --color-primary/--color-success. */
+  --color-chart-series-1: #2a78d6;
+  --color-chart-series-2: #1baf7a;
+  --color-brand: #2a78d6;
+}
+
+/* Map the runtime tokens above into Tailwind utilities (bg-surface,
+   text-on-primary, rounded-lg, text-headline-lg, font-headline, ...).
+   `@theme inline` re-reads the CSS vars per theme instead of baking in a
+   single value, which is what makes the data-theme switch work. */
+@theme inline {
+  --color-background: var(--color-background);
+  --color-on-background: var(--color-on-background);
+  --color-surface: var(--color-surface);
+  --color-surface-dim: var(--color-surface-dim);
+  --color-surface-bright: var(--color-surface-bright);
+  --color-surface-container-lowest: var(--color-surface-container-lowest);
+  --color-surface-container-low: var(--color-surface-container-low);
+  --color-surface-container: var(--color-surface-container);
+  --color-surface-container-high: var(--color-surface-container-high);
+  --color-surface-container-highest: var(--color-surface-container-highest);
+  --color-on-surface: var(--color-on-surface);
+  --color-on-surface-variant: var(--color-on-surface-variant);
+  --color-outline: var(--color-outline);
+  --color-outline-variant: var(--color-outline-variant);
+
+  --color-primary: var(--color-primary);
+  --color-on-primary: var(--color-on-primary);
+  --color-primary-container: var(--color-primary-container);
+  --color-on-primary-container: var(--color-on-primary-container);
+
+  --color-secondary: var(--color-secondary);
+  --color-on-secondary: var(--color-on-secondary);
+  --color-secondary-container: var(--color-secondary-container);
+  --color-on-secondary-container: var(--color-on-secondary-container);
+
+  --color-tertiary: var(--color-tertiary);
+  --color-on-tertiary: var(--color-on-tertiary);
+  --color-tertiary-container: var(--color-tertiary-container);
+  --color-on-tertiary-container: var(--color-on-tertiary-container);
+
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-error: var(--color-error);
+  --color-on-error: var(--color-on-error);
+  --color-error-container: var(--color-error-container);
+  --color-on-error-container: var(--color-on-error-container);
+  --color-accent-teal: var(--color-accent-teal);
+
+  --color-tone-primary-bg: var(--color-tone-primary-bg);
+  --color-tone-primary-text: var(--color-tone-primary-text);
+  --color-tone-success-bg: var(--color-tone-success-bg);
+  --color-tone-success-text: var(--color-tone-success-text);
+  --color-tone-warning-bg: var(--color-tone-warning-bg);
+  --color-tone-warning-text: var(--color-tone-warning-text);
+  --color-tone-error-bg: var(--color-tone-error-bg);
+  --color-tone-error-text: var(--color-tone-error-text);
+  --color-tone-neutral-bg: var(--color-tone-neutral-bg);
+  --color-tone-neutral-text: var(--color-tone-neutral-text);
+
+  --color-chart-series-1: var(--color-chart-series-1);
+  --color-chart-series-2: var(--color-chart-series-2);
+  --color-brand: var(--color-brand);
+
+  /* Fonts (design.md §8) */
+  --font-sans: var(--font-body);
+  --font-headline: var(--font-headline);
+  --font-body: var(--font-body);
+  --font-label: var(--font-label);
+
+  /* Type scale (design.md §9 + Stitch design-system.md) */
+  --text-headline-xl: 3rem;
+  --text-headline-xl--line-height: 3.5rem;
+  --text-headline-xl--font-weight: 700;
+
+  --text-headline-lg: 2rem;
+  --text-headline-lg--line-height: 2.5rem;
+  --text-headline-lg--font-weight: 600;
+
+  --text-headline-md: 1.5rem;
+  --text-headline-md--line-height: 2rem;
+  --text-headline-md--font-weight: 500;
+
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.75rem;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.5rem;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-body-sm--font-weight: 400;
+
+  --text-label-md: 0.75rem;
+  --text-label-md--line-height: 1rem;
+  --text-label-md--font-weight: 500;
+  --text-label-md--letter-spacing: 0.05em;
+
+  --text-label-sm: 0.625rem;
+  --text-label-sm--line-height: 0.875rem;
+  --text-label-sm--font-weight: 500;
+  --text-label-sm--letter-spacing: 0.05em;
+
+  /* Radius (design.md §11, reconciled with Stitch's rem scale) */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--color-background);
+  color: var(--color-on-surface);
+}
+
+/* Accessibility (rules.md §10): focus must stay visible everywhere,
+   including inside custom components that reset outline. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

@@ -1,0 +1,128 @@
+// Organisation Task Manager — database schema.
+// Field names mirror documents/System Architecture — Organisation Task
+// Manager.md §5–10 exactly (rules.md §16: column/field names are part of
+// the application contract). Each model has a Prisma-internal autoincrement
+// `id` (never exposed) plus a stable, application-generated string ID
+// (userId/taskId/...), per rules.md §17.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// rules.md §7 — initial roles.
+// STAFF | SUPER_ADMIN
+model User {
+  id           Int      @id @default(autoincrement())
+  userId       String   @unique
+  name         String
+  email        String   @unique
+  role         String
+  departmentId String?
+  designation  String?
+  avatar       String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  department   Department?   @relation(fields: [departmentId], references: [departmentId])
+  tasks        Task[]
+  activityLogs ActivityLog[]
+
+  @@map("users")
+}
+
+// rules.md §20/§21 — allowed status/priority values enforced in application
+// code (src/config.js), not at the schema level, so validation errors stay
+// under our own control (rules.md §27).
+model Task {
+  id          Int       @id @default(autoincrement())
+  taskId      String    @unique
+  userId      String
+  taskDate    String
+  title       String
+  description String?
+  categoryId  String?
+  priority    String    @default("MEDIUM")
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  user         User          @relation(fields: [userId], references: [userId])
+  category     Category?     @relation(fields: [categoryId], references: [categoryId])
+  activityLogs ActivityLog[]
+
+  @@map("tasks")
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  categoryId  String   @unique
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  tasks Task[]
+
+  @@map("categories")
+}
+
+model Department {
+  id          Int      @id @default(autoincrement())
+  departmentId String  @unique
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  users User[]
+
+  @@map("departments")
+}
+
+// rules.md §26 — every important operation must be traceable.
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  logId     String   @unique
+  userId    String
+  taskId    String?
+  action    String
+  field     String?
+  oldValue  String?
+  newValue  String?
+  timestamp DateTime @default(now())
+  metadata  String   @default("{}")
+
+  user User  @relation(fields: [userId], references: [userId])
+  task Task? @relation(fields: [taskId], references: [taskId])
+
+  @@map("activity_log")
+}
+
+model Setting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// Backs generateId() (src/lib/ids.js) — a dedicated counters table instead
+// of overloading Settings, now that a real transactional database makes
+// this straightforward (an improvement over the Apps Script version, which
+// had to stuff counters into the Settings sheet).
+model Counter {
+  name  String @id
+  value Int    @default(0)
+
+  @@map("counters")
+}

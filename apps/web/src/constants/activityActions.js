@@ -1,0 +1,24 @@
+// Mirrors apps/api/src/config.js ACTIVITY_ACTIONS — the subset of
+// phases.md Phase 7's event list actually written today. Extend both
+// together as more actions start firing (rules.md §16).
+export const ACTIVITY_ACTIONS = {
+  TASK_CREATED: 'TASK_CREATED',
+  TASK_UPDATED: 'TASK_UPDATED',
+  STATUS_CHANGED: 'STATUS_CHANGED',
+  TASK_COMPLETED: 'TASK_COMPLETED',
+  TASK_BLOCKED: 'TASK_BLOCKED',
+  SETTINGS_UPDATED: 'SETTINGS_UPDATED',
+  USER_CREATED: 'USER_CREATED',
+  DEPARTMENT_CREATED: 'DEPARTMENT_CREATED',
+}
+
+export const ACTIVITY_ACTION_LABELS = {
+  [ACTIVITY_ACTIONS.TASK_CREATED]: 'Task created',
+  [ACTIVITY_ACTIONS.TASK_UPDATED]: 'Task updated',
+  [ACTIVITY_ACTIONS.STATUS_CHANGED]: 'Status changed',
+  [ACTIVITY_ACTIONS.TASK_COMPLETED]: 'Task completed',
+  [ACTIVITY_ACTIONS.TASK_BLOCKED]: 'Task blocked',
+  [ACTIVITY_ACTIONS.SETTINGS_UPDATED]: 'Settings updated',
+  [ACTIVITY_ACTIONS.USER_CREATED]: 'User added',
+  [ACTIVITY_ACTIONS.DEPARTMENT_CREATED]: 'Department added',
+}

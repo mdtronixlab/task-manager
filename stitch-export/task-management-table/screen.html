@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Task Management - Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700&amp;family=Inter:wght@400&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "surface-container": "#1d1f29",
+                        "on-primary-fixed": "#001452",
+                        "on-tertiary": "#611300",
+                        "surface-variant": "#32343f",
+                        "inverse-primary": "#004ced",
+                        "success": "#10B981",
+                        "surface-container-highest": "#32343f",
+                        "tertiary-fixed-dim": "#ffb4a1",
+                        "on-tertiary-fixed-variant": "#891e00",
+                        "on-tertiary-fixed": "#3c0800",
+                        "on-secondary-container": "#a9bad3",
+                        "on-primary-fixed-variant": "#0038b6",
+                        "on-secondary": "#213145",
+                        "surface-bright": "#373943",
+                        "primary-container": "#0052ff",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "accent-teal": "#2DD4BF",
+                        "warning": "#F59E0B",
+                        "primary-fixed-dim": "#b7c4ff",
+                        "on-primary": "#002682",
+                        "tertiary-fixed": "#ffdbd2",
+                        "inverse-on-surface": "#2e303a",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-background": "#e1e1ef",
+                        "outline": "#8d90a2",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "on-surface": "#e1e1ef",
+                        "background": "#020617",
+                        "primary": "#b7c4ff",
+                        "surface-tint": "#b7c4ff",
+                        "primary-fixed": "#dde1ff",
+                        "outline-variant": "#434656",
+                        "on-tertiary-container": "#ffddd5",
+                        "secondary": "#b7c8e1",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-primary-container": "#dfe3ff",
+                        "surface-container-high": "#282934",
+                        "tertiary-container": "#bf3003",
+                        "on-surface-variant": "#c3c5d9",
+                        "surface-container-low": "#191b25",
+                        "secondary-container": "#3a4a5f",
+                        "error": "#EF4444",
+                        "inverse-surface": "#e1e1ef",
+                        "surface-container-lowest": "#0c0e17",
+                        "tertiary": "#ffb4a1",
+                        "surface": "#0F172A",
+                        "surface-dim": "#11131c",
+                        "secondary-fixed": "#d3e4fe"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "space-xs": "4px",
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "margin-desktop": "48px",
+                        "space-sm": "8px",
+                        "margin-mobile": "16px",
+                        "space-xl": "32px",
+                        "space-md": "16px",
+                        "space-lg": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-xl": ["Hanken Grotesk"],
+                        "label-sm": ["JetBrains Mono"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "fontWeight": "700" }],
+                        "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .nav-item-active {
+            position: relative;
+        }
+        
+        .nav-item-active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 60%;
+            width: 3px;
+            background-color: theme('colors.primary');
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Custom scrollbar for table */
+        .table-container::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: theme('colors.surface-variant');
+            border-radius: 3px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.outline-variant');
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen font-body-md antialiased overflow-x-hidden flex">
+<!-- SideNavBar (JSON Component) -->
+<nav class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-surface-container dark:bg-surface-container border-r border-outline-variant py-space-lg z-50">
+<div class="px-gutter mb-space-xl flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+<span class="material-symbols-outlined text-primary font-bold">domain</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary leading-tight truncate">OTM Admin</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant truncate">Enterprise Suite</p>
+</div>
+</div>
+<div class="flex-1 flex flex-col gap-space-xs px-space-sm overflow-y-auto">
+<!-- Dashboard -->
+<a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md hover:bg-surface-container-high transition-colors cursor-pointer transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- Tasks (Active) -->
+<a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-primary font-bold border-r-2 border-primary bg-surface-container-high cursor-pointer transition-all duration-200" href="#">
+<span class="material-symbols-outlined text-primary" data-icon="assignment" data-weight="fill" style="font-variation-settings: 'FILL' 1;">assignment</span>
+<span>Tasks</span>
+</a>
+<!-- Staff -->
+<a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md hover:bg-surface-container-high transition-colors cursor-pointer transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="group">group</span>
+<span>Staff</span>
+</a>
+<!-- Reports -->
+<a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md hover:bg-surface-container-high transition-colors cursor-pointer transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="bar_chart">bar_chart</span>
+<span>Reports</span>
+</a>
+<!-- Settings -->
+<a class="flex items-center gap-space-md px-space-md py-space-sm rounded-lg text-on-surface-variant font-body-md hover:bg-surface-container-high transition-colors cursor-pointer transition-all duration-200 group" href="#">
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+<div class="px-space-md mt-auto pt-space-lg">
+<div class="flex items-center gap-space-sm p-space-sm rounded-lg bg-surface-container-low border border-outline-variant/50">
+<img alt="Organization Logo" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A small, professional portrait photograph of an executive administrator in a modern office setting. The lighting is crisp and the background is slightly blurred. The image is cropped to a perfect circle." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDblFTSHuJbmcglrYRcAj4_maUbP2NIB0i8hA9pcA06CiEOIEZf9CUiCbe7soH0VW0rT7uYu42-T6rAZgdK1vQp4E2osBRf83hGvWJjmJZkUZ0GvoyFFyVu-jTh5wmkqLow8G_9HgDOrQ9c1SITz39mnEraiC4_k9ZE-rrP2vPK8Ff0qJlgPbN7l9MqV0bgn-iM7OouWpJitAle-CG5dyu0ci9GpHnOdFifdxI_NNrojfB5qLilOacH"/>
+<div class="flex-1 min-w-0">
+<p class="font-body-sm text-body-sm text-on-surface font-medium truncate">Admin User</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant truncate">System Administrator</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 flex flex-col min-h-screen relative">
+<!-- TopNavBar (JSON Component) -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-40 bg-surface/80 dark:bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center px-gutter h-16 transition-all duration-300 md:flex hidden">
+<div class="flex items-center gap-space-md">
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface hidden lg:block">Task Management</h2>
+</div>
+<div class="flex-1 max-w-md mx-space-xl hidden lg:block">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-sm">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-full py-1.5 pl-10 pr-4 font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all duration-200" placeholder="Search tasks, staff, or projects..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors scale-95 active:scale-100 relative group">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2.5 w-2 h-2 bg-error rounded-full border border-surface group-hover:border-surface-container-high transition-colors"></span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors scale-95 active:scale-100">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<div class="w-px h-6 bg-outline-variant mx-space-xs hidden sm:block"></div>
+<img alt="User Profile" class="w-8 h-8 rounded-full object-cover border border-outline-variant cursor-pointer hidden sm:block" data-alt="A small, professional portrait photograph of an executive administrator in a modern office setting. The lighting is crisp and the background is slightly blurred. The image is cropped to a perfect circle." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAN-EBQkvXxn5ge0YRBP9Om58xzULs2z4vmOn8lrX93rK-A8ERJyOmQfsibVEl_4uP-lAPmiFnX6T5CBYtqPdOh2DzQzVXwTwbZk1G-3yOsVUdEyr_FvPWE--N1RQBEZ6aWIUchaJzd16Fc-fs8h0v6998yP4OwtWtoTYR8TzXOZKCBuw9UywOga_vv3C1og0F_bY-OqxLYmd0WOx_XwquvdfMbzNf0eJ9-w05yUda3JUdPMQkAgvB"/>
+</div>
+</header>
+<!-- Mobile Top App Bar (Fallback for small screens) -->
+<header class="md:hidden flex items-center justify-between p-margin-mobile border-b border-outline-variant bg-surface sticky top-0 z-40">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Tasks</h1>
+<button class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container text-on-surface border border-outline-variant">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</header>
+<!-- Canvas / Content Area -->
+<div class="flex-1 p-margin-mobile md:p-margin-desktop md:pt-24 overflow-y-auto">
+<!-- Page Header & Global Actions -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md mb-space-lg">
+<div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-space-xs">Global Task Registry</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-2xl">Monitor and manage all ongoing operational tasks across departments. Use filters to isolate critical path items.</p>
+</div>
+<div class="flex items-center gap-space-sm self-start sm:self-auto shrink-0">
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface font-body-sm text-body-sm rounded-lg border border-outline-variant transition-all duration-200">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Export CSV</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 bg-[#0052ff] hover:bg-blue-600 text-white font-body-sm text-body-sm font-medium rounded-lg shadow-[0_0_15px_rgba(0,82,255,0.3)] transition-all duration-200">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span>New Task</span>
+</button>
+</div>
+</div>
+<!-- Bento Grid: Filters & Quick Stats -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md mb-space-lg">
+<!-- Filters Card (Spans 8 cols on desktop) -->
+<div class="glass-panel rounded-xl p-space-md lg:col-span-8 flex flex-col justify-center">
+<div class="flex flex-wrap items-center gap-space-md">
+<!-- Search (Secondary) -->
+<div class="flex-1 min-w-[200px]">
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Search</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-md py-1.5 pl-9 pr-3 font-body-sm text-body-sm text-on-surface focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors" placeholder="Task ID, Title..." type="text"/>
+</div>
+</div>
+<!-- Date Range -->
+<div class="w-full sm:w-auto">
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Date Range</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">calendar_today</span>
+<select class="w-full sm:w-auto bg-surface-container-low border border-outline-variant rounded-md py-1.5 pl-9 pr-8 font-body-sm text-body-sm text-on-surface appearance-none focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors cursor-pointer">
+<option>Last 30 Days</option>
+<option>This Week</option>
+<option>Last Quarter</option>
+<option>Custom Range...</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+<!-- Status Filter -->
+<div class="w-full sm:w-auto">
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-1 uppercase tracking-wider">Status</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">filter_list</span>
+<select class="w-full sm:w-auto bg-surface-container-low border border-outline-variant rounded-md py-1.5 pl-9 pr-8 font-body-sm text-body-sm text-on-surface appearance-none focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-colors cursor-pointer">
+<option>All Statuses</option>
+<option>In Progress</option>
+<option>Pending Review</option>
+<option>Blocked</option>
+<option>Completed</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+<!-- Reset Button -->
+<div class="self-end mt-1">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-md transition-colors" title="Reset Filters">
+<span class="material-symbols-outlined text-[20px]">restart_alt</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Quick Stats (Spans 4 cols) -->
+<div class="glass-panel rounded-xl p-space-md lg:col-span-4 flex items-center justify-around">
+<div class="text-center">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Active</p>
+<p class="font-headline-lg text-headline-lg text-on-surface font-semibold">142</p>
+</div>
+<div class="w-px h-12 bg-outline-variant/50"></div>
+<div class="text-center">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Blocked</p>
+<p class="font-headline-lg text-headline-lg text-error font-semibold">12</p>
+</div>
+<div class="w-px h-12 bg-outline-variant/50"></div>
+<div class="text-center">
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Completed</p>
+<p class="font-headline-lg text-headline-lg text-success font-semibold">89</p>
+</div>
+</div>
+</div>
+<!-- Main Data Table Container -->
+<div class="glass-panel rounded-xl border border-outline-variant overflow-hidden flex flex-col">
+<!-- Table Header Actions -->
+<div class="p-space-sm border-b border-outline-variant/50 flex justify-between items-center bg-surface-container-low/50">
+<div class="flex items-center gap-2 px-2">
+<span class="font-label-md text-label-md text-on-surface-variant">Showing 1-10 of 243 Tasks</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high transition-colors" title="Columns">
+<span class="material-symbols-outlined text-[18px]">view_column</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-high transition-colors" title="Density">
+<span class="material-symbols-outlined text-[18px]">table_rows</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Table Wrapper -->
+<div class="overflow-x-auto table-container">
+<table class="w-full text-left border-collapse min-w-[900px]">
+<thead class="bg-surface-container/50 border-b border-outline-variant font-label-md text-label-md text-on-surface-variant uppercase tracking-wider sticky top-0 backdrop-blur-sm z-10">
+<tr>
+<th class="p-space-sm font-medium w-12 text-center">
+<input class="rounded bg-surface-container border-outline-variant text-primary focus:ring-primary focus:ring-offset-surface" type="checkbox"/>
+</th>
+<th class="p-space-sm font-medium cursor-pointer hover:text-primary transition-colors group">
+<div class="flex items-center gap-1">
+                                        Task Name
+                                        <span class="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_downward</span>
+</div>
+</th>
+<th class="p-space-sm font-medium cursor-pointer hover:text-primary transition-colors group">Assigned Staff</th>
+<th class="p-space-sm font-medium cursor-pointer hover:text-primary transition-colors group">Date</th>
+<th class="p-space-sm font-medium cursor-pointer hover:text-primary transition-colors group">Category</th>
+<th class="p-space-sm font-medium cursor-pointer hover:text-primary transition-colors group">Priority</th>
+<th class="p-space-sm font-medium cursor-pointer hover:text-primary transition-colors group">Status</th>
+<th class="p-space-sm font-medium text-right w-16"></th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/30">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors group">
+<td class="p-space-sm text-center">
+<input class="rounded bg-surface-container border-outline-variant text-primary focus:ring-primary focus:ring-offset-surface" type="checkbox"/>
+</td>
+<td class="p-space-sm">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface group-hover:text-primary transition-colors">Implement Multi-Factor Auth</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono text-[10px]">TSK-8924</span>
+</div>
+</td>
+<td class="p-space-sm">
+<div class="flex items-center gap-2">
+<img alt="Avatar" class="w-6 h-6 rounded-full object-cover border border-outline-variant" data-alt="A very small, circular headshot of a software developer. The background is a blurred modern office. Sharp focus on the face." src="https://lh3.googleusercontent.com/aida-public/AB6AXuACeWloUMU_SLxryv3WGdxxzNbwCfcadgJ_DT9_QAEkeYI7vBSMGHTYjb76AzJUUCNNZp7ZWex-_UgPNbLCXdDtzgQawmdj0Em9P2KJM5Wk1IUo6y27yPVChEr_MeMSMxAysz_TABaAtWF7xrHssr9-JCx-69S5KGvG4Wj6uJBjP8_grIzLfvOgnYRDvr892fvN4EwHoOgTTGxoVTyCdbOD8JynrAhFvnM3zIg4dz8riU4upUsuF1xU"/>
+<span>Elena R.</span>
+</div>
+</td>
+<td class="p-space-sm text-on-surface-variant">Oct 24, 2023</td>
+<td class="p-space-sm">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-label-sm bg-surface-container border border-outline-variant text-on-surface-variant">Security</span>
+</td>
+<td class="p-space-sm">
+<div class="flex items-center gap-1 text-error">
+<span class="material-symbols-outlined text-[14px]" data-weight="fill">keyboard_double_arrow_up</span>
+<span class="font-label-sm text-[11px] font-medium uppercase tracking-wider">Critical</span>
+</div>
+</td>
+<td class="p-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/20">
+<span class="w-1.5 h-1.5 rounded-full bg-warning"></span>
+                                        In Progress
+                                    </span>
+</td>
+<td class="p-space-sm text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors group">
+<td class="p-space-sm text-center">
+<input class="rounded bg-surface-container border-outline-variant text-primary focus:ring-primary focus:ring-offset-surface" type="checkbox"/>
+</td>
+<td class="p-space-sm">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface group-hover:text-primary transition-colors">Q3 Financial Audit Review</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono text-[10px]">TSK-8910</span>
+</div>
+</td>
+<td class="p-space-sm">
+<div class="flex items-center gap-2">
+<img alt="Avatar" class="w-6 h-6 rounded-full object-cover border border-outline-variant" data-alt="A very small, circular headshot of a financial analyst wearing glasses. The background is a blurred corporate environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrLDjiomWcWbthXUlYz5XTPe4h9RIx0aXoWShV-9nxXA4WhRSHIOfOvtBSk7EJnFc4jyNWrpLJ4eNSbvUHcWczDkSuWDJKPUIPXH4VKOCREAVMbSjl4Hm8U2_yGB7zY59gQEzbmjB5wDUJul4D3dH_PDB2c5X68NleYFdhS1TV2xTl0R2lHLK8LXHA2HMPyXwsNfClX8dVdrUU7rp3PR90TboG3WIWK5lG-fqfH58-zo8F07nTGAXs"/>
+<span>Marcus T.</span>
+</div>
+</td>
+<td class="p-space-sm text-on-surface-variant">Oct 22, 2023</td>
+<td class="p-space-sm">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-label-sm bg-surface-container border border-outline-variant text-on-surface-variant">Finance</span>
+</td>
+<td class="p-space-sm">
+<div class="flex items-center gap-1 text-warning">
+<span class="material-symbols-outlined text-[14px]">keyboard_arrow_up</span>
+<span class="font-label-sm text-[11px] font-medium uppercase tracking-wider">High</span>
+</div>
+</td>
+<td class="p-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                        Pending Review
+                                    </span>
+</td>
+<td class="p-space-sm text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors group">
+<td class="p-space-sm text-center">
+<input class="rounded bg-surface-container border-outline-variant text-primary focus:ring-primary focus:ring-offset-surface" type="checkbox"/>
+</td>
+<td class="p-space-sm">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface group-hover:text-primary transition-colors">Update Client Onboarding Flow</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono text-[10px]">TSK-8895</span>
+</div>
+</td>
+<td class="p-space-sm">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center font-label-sm text-[10px] border border-outline-variant">SJ</div>
+<span>Sarah J.</span>
+</div>
+</td>
+<td class="p-space-sm text-on-surface-variant">Oct 20, 2023</td>
+<td class="p-space-sm">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-label-sm bg-surface-container border border-outline-variant text-on-surface-variant">Design</span>
+</td>
+<td class="p-space-sm">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">remove</span>
+<span class="font-label-sm text-[11px] font-medium uppercase tracking-wider">Medium</span>
+</div>
+</td>
+<td class="p-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-error/10 text-error border border-error/20">
+<span class="material-symbols-outlined text-[12px]">block</span>
+                                        Blocked
+                                    </span>
+</td>
+<td class="p-space-sm text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-high/50 transition-colors group">
+<td class="p-space-sm text-center">
+<input class="rounded bg-surface-container border-outline-variant text-primary focus:ring-primary focus:ring-offset-surface" type="checkbox"/>
+</td>
+<td class="p-space-sm">
+<div class="flex flex-col">
+<span class="font-medium text-on-surface group-hover:text-primary transition-colors">Provision New AWS Instances</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono text-[10px]">TSK-8850</span>
+</div>
+</td>
+<td class="p-space-sm">
+<div class="flex items-center gap-2">
+<img alt="Avatar" class="w-6 h-6 rounded-full object-cover border border-outline-variant" data-alt="A very small, circular headshot of a systems engineer. The background is dark and moody. Sharp focus on the face." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzevof3UKUlSmNozh_JmHS1DwVLgS7wEyo-85pnJlZHH6lvSItlnTxJKeJNA6j0FRoffJvnsjsR3i3m8QbfeRK2K6ESnsE-pNejatGcA3KzmxAJXgpPM-0RwiAvdCSnfuOZutwupIijph8QbhcfgPd3xXA3p0_ohFs6-oQEtIjODrTwQtFLepVi1z1xZ1yAQVL8HQgeG3RvmLZpkYDKAOT26eAED4KnYphWmUn-KaXlAc2s-JkNGR8"/>
+<span>David K.</span>
+</div>
+</td>
+<td class="p-space-sm text-on-surface-variant">Oct 18, 2023</td>
+<td class="p-space-sm">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-label-sm bg-surface-container border border-outline-variant text-on-surface-variant">Infrastructure</span>
+</td>
+<td class="p-space-sm">
+<div class="flex items-center gap-1 text-warning">
+<span class="material-symbols-outlined text-[14px]">keyboard_arrow_up</span>
+<span class="font-label-sm text-[11px] font-medium uppercase tracking-wider">High</span>
+</div>
+</td>
+<td class="p-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
+<span class="material-symbols-outlined text-[12px]">check_circle</span>
+                                        Completed
+                                    </span>
+</td>
+<td class="p-space-sm text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="p-space-sm border-t border-outline-variant flex items-center justify-between bg-surface-container-low/30">
+<div class="font-body-sm text-body-sm text-on-surface-variant">
+                        Page 1 of 25
+                    </div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded text-on-surface-variant opacity-50 cursor-not-allowed" disabled="">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-primary/10 text-primary font-medium text-sm flex items-center justify-center border border-primary/20">1</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-high text-on-surface font-medium text-sm flex items-center justify-center transition-colors">2</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-high text-on-surface font-medium text-sm flex items-center justify-center transition-colors">3</button>
+<span class="text-on-surface-variant px-1">...</span>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom spacing for mobile -->
+<div class="h-8"></div>
+</div>
+</main>
+</body></html>
