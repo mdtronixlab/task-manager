@@ -13,10 +13,11 @@
 #
 # One-time setup before pasting this in, same as docker-compose.yml's
 # README.md note: put your real Firebase service-account key at
-# /DATA/AppData/task-manager/service-account.json on the CasaOS host (swap
-# "task-manager" if you changed AppID below — CasaOS substitutes $AppID
-# itself at install time here, unlike docker-compose.yml which needs a root
-# .env for the same substitution when run via plain `docker compose`).
+# /DATA/AppData/task-manager/service-account.json on the CasaOS host
+# (swap "task-manager" if you rename the app during import — CasaOS
+# substitutes $AppID itself at install time here, unlike docker-compose.yml
+# which needs a root .env for the same substitution when run via plain
+# `docker compose`).
 #
 # After pasting: CasaOS's import screen lets you edit the environment
 # variables below (using the x-casaos descriptions as labels) before
@@ -62,15 +63,27 @@ services:
       # Edit these via CasaOS's environment-variable editor (see x-casaos.envs
       # below for what each one does) — CORS_ORIGIN in particular must match
       # wherever you actually reach this app or sign-in fails.
-      CORS_ORIGIN: ""
+      CORS_ORIGIN: "https://tasker.mdtronix.in"
       BOOTSTRAP_ADMIN_EMAIL: ""
       BOOTSTRAP_ADMIN_NAME: ""
       VAPID_PUBLIC_KEY: ""
       VAPID_PRIVATE_KEY: ""
       VAPID_SUBJECT: "mailto:admin@example.com"
+    # Long form (separate host/container keys) rather than a single
+    # "host:container" string — CasaOS's own import parser naively splits
+    # that string on the *first* colon it finds, which lands inside
+    # `$AppID`'s own substitution syntax if a `:-default` fallback is used,
+    # corrupting both paths (confirmed the hard way). Plain `$AppID` (no
+    # braces, no fallback) matches CasaOS's own official app-store examples
+    # — it substitutes this itself at install time.
     volumes:
-      - /DATA/AppData/${AppID:-task-manager}/data:/app/data
-      - /DATA/AppData/${AppID:-task-manager}/service-account.json:/app/secrets/service-account.json:ro
+      - type: bind
+        source: /DATA/AppData/$AppID/data
+        target: /app/data
+      - type: bind
+        source: /DATA/AppData/$AppID/service-account.json
+        target: /app/secrets/service-account.json
+        read_only: true
     restart: unless-stopped
     x-casaos:
       envs:
