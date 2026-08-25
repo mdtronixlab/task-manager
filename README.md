@@ -148,9 +148,31 @@ mkdir -p /DATA/AppData/task-manager/data
 cp apps/api/service-account.json /DATA/AppData/task-manager/service-account.json
 ```
 
-This only covers running an already-checked-out copy of the repo through
-CasaOS (e.g. over SSH — `docker compose up -d --build`, same as any other
-host). It's not installable via CasaOS's own "Custom Install → paste YAML"
-flow yet, since that expects pre-built images pulled from a registry rather
-than the `build:` context this compose file uses — publishing images to a
-registry would be the follow-up for that, not done here.
+That covers running an already-checked-out copy of the repo through CasaOS
+(e.g. over SSH — `docker compose up -d --build`, same as any other host).
+
+For CasaOS's own **"App Store → Custom Install → Import → Docker
+Compose"** dialog (no repo checkout at all — you just paste YAML), use
+[`docker-compose.casaos.yml`](docker-compose.casaos.yml) instead: same
+`x-casaos` metadata and `/DATA/AppData/$AppID` layout, but `image:` instead
+of `build:`, pulling pre-built images from GitHub Container Registry
+(published by [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
+on every push to `main`, so they never go stale — public images even
+though this repo is private, so the pull needs no login). One-time setup
+before pasting it in:
+
+```bash
+mkdir -p /DATA/AppData/task-manager/data
+cp apps/api/service-account.json /DATA/AppData/task-manager/service-account.json
+```
+
+Then paste the file's contents in, and set at least `CORS_ORIGIN` (under
+the `api` service's environment variables, editable right there in
+CasaOS's import screen) to wherever you'll actually reach the app from —
+it's left blank in that file since, unlike `docker-compose.yml`, there's no
+per-host root `.env` to read a real value from.
+
+The first time the workflow runs, its GHCR packages are created **private**
+by default (GITHUB_TOKEN can't flip that itself) — go to the package's
+Settings on GitHub and change visibility to Public once, or the compose
+paste above will fail to pull.

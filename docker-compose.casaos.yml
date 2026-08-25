@@ -1,0 +1,115 @@
+# The file to literally paste into CasaOS's own "App Store → Custom
+# Install → Import → Docker Compose" dialog — unlike docker-compose.yml
+# (which builds both images from this checked-out repo, e.g. over SSH —
+# see README.md's Docker section, and is how this app is actually deployed
+# today), CasaOS's paste-YAML flow never has repo/Dockerfile access, so
+# this variant pulls pre-built images from GitHub Container Registry
+# instead (published by .github/workflows/docker-publish.yml on every push
+# to main — see that file for how they're kept in sync with source).
+# Those images are public (no `docker login` needed to pull) even though
+# the source repo itself stays private — a compiled app image carries far
+# less than the repo (no history/docs/comments), which is standard
+# practice for closed-source apps distributed as containers.
+#
+# One-time setup before pasting this in, same as docker-compose.yml's
+# README.md note: put your real Firebase service-account key at
+# /DATA/AppData/task-manager/service-account.json on the CasaOS host (swap
+# "task-manager" if you changed AppID below — CasaOS substitutes $AppID
+# itself at install time here, unlike docker-compose.yml which needs a root
+# .env for the same substitution when run via plain `docker compose`).
+#
+# After pasting: CasaOS's import screen lets you edit the environment
+# variables below (using the x-casaos descriptions as labels) before
+# finishing the install — at minimum set CORS_ORIGIN to wherever you'll
+# actually reach this app from.
+name: task-manager
+
+x-casaos:
+  id: com.mdtronixlab.task-manager
+  main: web
+  architectures:
+    - amd64
+    - arm64
+  category: Productivity
+  developer: mdtronixlab
+  author: mdtronixlab
+  title:
+    en_us: Organisation Task Manager
+  tagline:
+    en_us: Daily task tracking for staff and admins
+  description:
+    en_us: >-
+      Internal daily task management: staff add/complete today's tasks,
+      Super Admins assign tasks to individual staff and review activity
+      across the organisation. Express + Prisma/SQLite API behind a static
+      React frontend.
+  icon: data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOSIgZmlsbD0iIzM5ODdlNSIgLz4KICA8cGF0aCBkPSJNOS41IDE2LjVsNCA0IDktOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIC8+Cjwvc3ZnPgo=
+  scheme: http
+  port_map: "8080"
+  index: /
+
+services:
+  api:
+    image: ghcr.io/mdtronixlab/task-manager-api:latest
+    ports:
+      - "4000:4000"
+    environment:
+      # Fixed — this container's own internal layout, not something to edit.
+      DATABASE_URL: file:/app/data/app.db
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/service-account.json
+      PORT: "4000"
+      FIREBASE_PROJECT_ID: task-manager-app-2d85c
+      # Edit these via CasaOS's environment-variable editor (see x-casaos.envs
+      # below for what each one does) — CORS_ORIGIN in particular must match
+      # wherever you actually reach this app or sign-in fails.
+      CORS_ORIGIN: ""
+      BOOTSTRAP_ADMIN_EMAIL: ""
+      BOOTSTRAP_ADMIN_NAME: ""
+      VAPID_PUBLIC_KEY: ""
+      VAPID_PRIVATE_KEY: ""
+      VAPID_SUBJECT: "mailto:admin@example.com"
+    volumes:
+      - /DATA/AppData/${AppID:-task-manager}/data:/app/data
+      - /DATA/AppData/${AppID:-task-manager}/service-account.json:/app/secrets/service-account.json:ro
+    restart: unless-stopped
+    x-casaos:
+      envs:
+        - container: CORS_ORIGIN
+          description:
+            en_us: Origin the web app is served from (browser-facing) — e.g. https://tasker.example.com. Must match exactly or sign-in fails.
+        - container: BOOTSTRAP_ADMIN_EMAIL
+          description:
+            en_us: Optional — email pre-authorized as the first Super Admin on first start.
+        - container: BOOTSTRAP_ADMIN_NAME
+          description:
+            en_us: Optional — display name for that first Super Admin.
+        - container: VAPID_PUBLIC_KEY
+          description:
+            en_us: Optional — enables Web Push reminders. Generate with `npx web-push generate-vapid-keys`.
+        - container: VAPID_PRIVATE_KEY
+          description:
+            en_us: Optional — pairs with VAPID_PUBLIC_KEY above.
+      ports:
+        - container: "4000"
+          description:
+            en_us: Express API
+      volumes:
+        - container: /app/data
+          description:
+            en_us: SQLite database storage.
+        - container: /app/secrets/service-account.json
+          description:
+            en_us: Firebase service-account key (read-only) — must exist at this path before first start.
+
+  web:
+    image: ghcr.io/mdtronixlab/task-manager-web:latest
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    x-casaos:
+      ports:
+        - container: "80"
+          description:
+            en_us: Web app (nginx)
