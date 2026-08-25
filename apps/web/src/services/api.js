@@ -61,6 +61,54 @@ export const api = {
   patch: (path, body) => request(path, { method: 'PATCH', body }),
 }
 
+/**
+ * Downloads a binary file response (e.g. reports/export's Excel file)
+ * rather than parsing JSON — everything above expects the {success,data}
+ * envelope; a file endpoint returns raw bytes on success and only falls
+ * back to that envelope to describe an error. Triggers the browser's
+ * native save via a throwaway object URL; filename comes from the
+ * server's Content-Disposition header, falling back to `fallbackName`.
+ */
+export async function downloadFile(path, fallbackName = 'download') {
+  const token = await getIdToken()
+  const headers = {}
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  let response
+  try {
+    response = await fetch(`${API_URL}${path}`, { headers })
+  } catch {
+    throw new ApiError('NETWORK_ERROR', 'Could not reach the server. Check your connection.', 0)
+  }
+
+  if (!response.ok) {
+    let payload = null
+    try {
+      payload = await response.json()
+    } catch {
+      // Fall through — payload stays null, generic message below stands.
+    }
+    throw new ApiError(
+      payload?.error?.code,
+      payload?.error?.message || 'Could not generate the file. Please try again.',
+      response.status,
+    )
+  }
+
+  const blob = await response.blob()
+  const match = (response.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)
+  const filename = match ? match[1] : fallbackName
+
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 /** GET /api/users/me — architecture.md §13. */
 export function getCurrentUser() {
   return api.get('/api/users/me')

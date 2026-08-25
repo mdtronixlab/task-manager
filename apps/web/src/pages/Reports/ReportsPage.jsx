@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getReport, getCompletionTrend } from '../../services/reports'
+import { Download } from 'lucide-react'
+import { getReport, getCompletionTrend, exportTasksReport } from '../../services/reports'
 import { getUsers } from '../../services/users'
 import { getDepartments } from '../../services/departments'
 import { defaultTaskFilters } from '../../utils/taskFilters'
 import { ROLES } from '../../constants/roles'
+import { useToast } from '../../context/ToastContext'
 import ReportFilters from '../../components/reports/ReportFilters'
 import CompletionTrendChart from '../../components/reports/CompletionTrendChart'
 import OrgSummary from '../../components/dashboard/OrgSummary'
 import StaffSummaryTable from '../../components/staff/StaffSummaryTable'
+import Button from '../../components/Button'
 import LoadingState from '../../components/LoadingState'
 import ErrorState from '../../components/ErrorState'
 
@@ -34,6 +37,8 @@ export default function ReportsPage() {
   const [trend, setTrend] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [exporting, setExporting] = useState(false)
+  const { showToast } = useToast()
 
   const loadReferenceData = useCallback(async () => {
     const [users, departmentData] = await Promise.all([getUsers(), getDepartments()])
@@ -64,13 +69,34 @@ export default function ReportsPage() {
     loadReport(filters)
   }, [filters, loadReport])
 
+  async function handleExport() {
+    setExporting(true)
+    try {
+      await exportTasksReport(toReportParams(filters))
+    } catch (err) {
+      showToast(err.message || 'Could not export the report. Please try again.', { tone: 'error' })
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-headline-lg font-headline text-on-surface">Reports</h1>
-        <p className="text-body-md text-on-surface-variant">
-          Operational summary for the selected period — not a performance score.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-headline-lg font-headline text-on-surface">Reports</h1>
+          <p className="text-body-md text-on-surface-variant">
+            Operational summary for the selected period — not a performance score.
+          </p>
+        </div>
+        {/* Same [dateFrom, dateTo]/staff/department scope as the report
+            below (toReportParams) — the row-level export of what's already
+            being summarised, not a separate query the user has to line up
+            themselves. */}
+        <Button variant="secondary" loading={exporting} loadingText="Exporting…" onClick={handleExport}>
+          <Download className="size-4" aria-hidden="true" />
+          Export to Excel
+        </Button>
       </div>
 
       <ReportFilters filters={filters} onChange={setFilters} staff={staff} departments={departments} />

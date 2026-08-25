@@ -120,6 +120,57 @@ export async function getReport(params = {}) {
  * doesn't silently skip gaps. Super Admin only.
  * @param {{range?: string, date?: string, dateFrom?: string, dateTo?: string, userId?: string, departmentId?: string}} params
  */
+// Title Case for a SCREAMING_SNAKE_CASE enum value — apps/web has its own
+// human labels (constants/taskStatus.js, taskPriority.js) but those are
+// frontend-only; the export is generated entirely server-side (routes/
+// reports.js), so it needs its own minimal version rather than importing
+// across that boundary for two words.
+function titleCase(value) {
+  return value
+    .toLowerCase()
+    .split('_')
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
+ * Row-level task data for the Excel export (routes/reports.js) — same
+ * [dateFrom, dateTo]/staff/department scoping as getReport, but the
+ * individual tasks rather than aggregate counts. Super Admin only.
+ * @param {{range?: string, date?: string, dateFrom?: string, dateTo?: string, userId?: string, departmentId?: string}} params
+ */
+export async function getTaskExportRows(params = {}) {
+  const { dateFrom, dateTo } = await resolveDateBounds(params);
+  const taskWhere = {
+    taskDate: { gte: dateFrom, lte: dateTo },
+    ...(params.userId ? { userId: params.userId } : {}),
+    ...(params.departmentId ? { user: { departmentId: params.departmentId } } : {}),
+  };
+
+  const tasks = await prisma.task.findMany({
+    where: taskWhere,
+    include: { user: { include: { department: true } }, category: true },
+    orderBy: [{ taskDate: 'asc' }, { user: { name: 'asc' } }],
+  });
+
+  return {
+    dateFrom,
+    dateTo,
+    rows: tasks.map((task) => ({
+      date: task.taskDate,
+      staff: task.user.name,
+      department: task.user.department?.name || '',
+      title: task.title,
+      description: task.description || '',
+      category: task.category?.name || '',
+      priority: titleCase(task.priority),
+      status: titleCase(task.status),
+      createdAt: task.createdAt,
+      completedAt: task.completedAt,
+    })),
+  };
+}
+
 export async function getCompletionTrend(params = {}) {
   const { dateFrom, dateTo } = await resolveDateBounds(params);
 

@@ -1,6 +1,6 @@
 // Report service layer (rules.md §34) — architecture.md §13.
 
-import { api } from './api'
+import { api, downloadFile } from './api'
 
 function toQuery(params = {}) {
   const query = new URLSearchParams(
@@ -22,4 +22,11 @@ export function getReport(params) {
 /** GET /api/reports/trend — day-by-day completion series (phases.md Phase 6). */
 export function getCompletionTrend(params) {
   return api.get(`/api/reports/trend${toQuery(params)}`)
+}
+
+/** GET /api/reports/export — downloads the individual tasks for the given
+ * range/staff/department filters as an .xlsx file (same params as
+ * getReport — the row-level counterpart to its aggregate counts). */
+export function exportTasksReport(params) {
+  return downloadFile(`/api/reports/export${toQuery(params)}`, 'tasks.xlsx')
 }
