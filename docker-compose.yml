@@ -122,10 +122,14 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        # Reaches the browser on the host, not the Docker network — this is
-        # what the user's browser calls, so it has to be the api service's
-        # published host port, never the internal service name/port.
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+        # Empty by default = relative `/api/...` paths, resolved by the
+        # browser against whatever origin actually served the page —
+        # nginx.conf's own /api/ reverse-proxy to the `api` service handles
+        # the rest. That works unmodified from any origin (localhost, a
+        # LAN/Tailscale IP, a real domain through a tunnel) with the same
+        # build, so this only needs to be a real absolute URL if the API is
+        # ever served from a genuinely different origin than the web app.
+        VITE_API_URL: ${VITE_API_URL:-}
         VITE_APP_NAME: ${VITE_APP_NAME:-Organisation Task Manager}
         VITE_APP_ENV: ${VITE_APP_ENV:-production}
         VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
