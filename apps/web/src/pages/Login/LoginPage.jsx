@@ -18,7 +18,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center bg-background px-4">
+    <main className="relative flex min-h-screen items-center justify-center px-4">
       <ThemeToggle className="absolute right-4 top-4" />
       <Card className="w-full max-w-sm">
         <CardContent className="flex flex-col items-center gap-6 py-8 text-center">

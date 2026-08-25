@@ -22,7 +22,13 @@ export default function Logo({ showWordmark = true, size = 'md', className = '' 
           className={`${iconSize} shrink-0 rounded-md object-contain`}
         />
       ) : (
-        <svg viewBox="0 0 32 32" className={`${iconSize} shrink-0`} aria-hidden="true">
+        <svg
+          viewBox="0 0 32 32"
+          className={`${iconSize} shrink-0`}
+          role={showWordmark ? undefined : 'img'}
+          aria-label={showWordmark ? undefined : applicationName}
+          aria-hidden={showWordmark ? true : undefined}
+        >
           <rect width="32" height="32" rx="9" className="fill-brand" />
           <path
             d="M9.5 16.5l4 4 9-9"

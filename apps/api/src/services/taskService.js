@@ -7,7 +7,7 @@
 import { prisma } from '../db.js';
 import { ROLES, TASK_STATUS, TASK_PRIORITY, DEFAULT_PRIORITY } from '../config.js';
 import { generateTaskId } from '../lib/ids.js';
-import { today, resolveDateRange } from '../lib/time.js';
+import { today, resolveDateRange, addDays } from '../lib/time.js';
 import { requireString, requireEnum } from '../lib/validate.js';
 import { AppError, NotFound, Forbidden, ValidationError } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
@@ -78,6 +78,134 @@ export async function getTasks(currentUser, params = {}) {
 
   const tasks = await prisma.task.findMany({ where, orderBy: { createdAt: 'desc' } });
   return tasks.map(shapeTask);
+}
+
+// How far back getCarryForwardCandidates looks — a generous safety net for
+// someone who skipped a few days, not an invitation to resurface a task from
+// months ago. Same reasoning as lib/time.js's MAX_ENUMERATED_DAYS: a cap,
+// not a real product decision.
+const CARRY_FORWARD_LOOKBACK_DAYS = 14;
+
+/**
+ * Past, unfinished tasks (own only — carrying forward someone else's task
+ * makes no sense) that haven't already been resolved one way or the other —
+ * carried forward already, or explicitly dismissed. "Resolved" is tracked
+ * via ActivityLog rather than a new column: TASK_CARRIED_FORWARD /
+ * TASK_CARRY_FORWARD_DISMISSED logged against the *original* taskId is what
+ * excludes it here, so a task only ever gets offered once.
+ * @param {object} currentUser
+ * @return {Promise<object[]>} Oldest first — clears the backlog in order.
+ */
+export async function getCarryForwardCandidates(currentUser) {
+  const todayStr = await today();
+  const earliest = addDays(todayStr, -CARRY_FORWARD_LOOKBACK_DAYS);
+
+  const tasks = await prisma.task.findMany({
+    where: {
+      userId: currentUser.userId,
+      taskDate: { gte: earliest, lt: todayStr },
+      status: { not: TASK_STATUS.COMPLETED },
+      activityLogs: {
+        none: {
+          action: { in: ['TASK_CARRIED_FORWARD', 'TASK_CARRY_FORWARD_DISMISSED'] },
+        },
+      },
+    },
+    orderBy: { taskDate: 'asc' },
+  });
+
+  return tasks.map(shapeTask);
+}
+
+/**
+ * True once a task has already been carried forward or dismissed — the same
+ * condition getCarryForwardCandidates' query excludes on, re-checked here
+ * so carryForwardTask/dismissCarryForward reject a stale/duplicate request
+ * (e.g. a double-click, or two tabs open on the same candidate) instead of
+ * silently creating a second copy or logging a second dismissal.
+ */
+async function isCarryForwardResolved(taskId) {
+  const existing = await prisma.activityLog.findFirst({
+    where: { taskId, action: { in: ['TASK_CARRIED_FORWARD', 'TASK_CARRY_FORWARD_DISMISSED'] } },
+  });
+  return Boolean(existing);
+}
+
+/**
+ * Creates a fresh copy of a past, unfinished task dated today — the staff
+ * member "fetching" yesterday's leftover task instead of retyping it. The
+ * original is left exactly as it was (still shows its real history/status
+ * on its own day); only a TASK_CARRIED_FORWARD log against it marks it
+ * resolved so getCarryForwardCandidates stops offering it.
+ * @param {object} currentUser
+ * @param {string} taskId The original (past) task.
+ */
+export async function carryForwardTask(currentUser, taskId) {
+  requireString(taskId, 'taskId');
+
+  const task = await prisma.task.findUnique({ where: { taskId } });
+  if (!task) throw NotFound('Task not found.');
+  if (task.userId !== currentUser.userId) {
+    throw Forbidden("You cannot carry forward another user's task.");
+  }
+
+  const todayStr = await today();
+  if (task.taskDate >= todayStr) {
+    throw ValidationError('Only a task from a past day can be carried forward.');
+  }
+  if (task.status === TASK_STATUS.COMPLETED) {
+    throw ValidationError('This task is already completed.');
+  }
+  if (await isCarryForwardResolved(taskId)) {
+    throw ValidationError('This task has already been carried forward or dismissed.');
+  }
+
+  const newTask = await prisma.task.create({
+    data: {
+      taskId: await generateTaskId(),
+      userId: currentUser.userId,
+      taskDate: todayStr,
+      title: task.title,
+      description: task.description,
+      categoryId: task.categoryId,
+      priority: task.priority,
+      status: TASK_STATUS.PENDING,
+    },
+  });
+
+  await logActivity(currentUser.userId, newTask.taskId, 'TASK_CREATED', null, null, null, {
+    title: task.title,
+    carriedFromTaskId: taskId,
+  });
+  await logActivity(currentUser.userId, taskId, 'TASK_CARRIED_FORWARD', null, null, null, {
+    newTaskId: newTask.taskId,
+  });
+
+  return shapeTask(newTask);
+}
+
+/**
+ * Marks a past, unfinished task as "not carrying this forward" — same
+ * resolution effect as carryForwardTask for getCarryForwardCandidates'
+ * purposes, just without creating a new task.
+ * @param {object} currentUser
+ * @param {string} taskId The original (past) task.
+ */
+export async function dismissCarryForward(currentUser, taskId) {
+  requireString(taskId, 'taskId');
+
+  const task = await prisma.task.findUnique({ where: { taskId } });
+  if (!task) throw NotFound('Task not found.');
+  if (task.userId !== currentUser.userId) {
+    throw Forbidden("You cannot dismiss another user's task.");
+  }
+  if (await isCarryForwardResolved(taskId)) {
+    throw ValidationError('This task has already been carried forward or dismissed.');
+  }
+
+  await logActivity(currentUser.userId, taskId, 'TASK_CARRY_FORWARD_DISMISSED');
+
+  return { dismissed: true };
 }
 
 /**

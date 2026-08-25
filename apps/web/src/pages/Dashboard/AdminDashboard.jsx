@@ -73,8 +73,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-headline-lg font-headline text-on-surface">Organisation Dashboard</h1>
+      <div className="neu flex flex-col gap-1 rounded-2xl px-6 py-5">
+        <h1 className="bg-gradient-to-r from-on-surface to-on-surface-variant bg-clip-text text-headline-lg font-headline text-transparent">
+          Organisation Dashboard
+        </h1>
         <p className="text-body-md text-on-surface-variant">
           {dateLabel} · Signed in as {appUser.name}
         </p>

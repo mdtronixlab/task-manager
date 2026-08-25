@@ -51,7 +51,7 @@ function formatDateOnly(date) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' }).format(date);
 }
 
-function addDays(dateStr, days) {
+export function addDays(dateStr, days) {
   const d = parseDateOnly(dateStr);
   d.setUTCDate(d.getUTCDate() + days);
   return formatDateOnly(d);

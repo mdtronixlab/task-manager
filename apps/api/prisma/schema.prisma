@@ -29,9 +29,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  department   Department?   @relation(fields: [departmentId], references: [departmentId])
-  tasks        Task[]
-  activityLogs ActivityLog[]
+  department        Department?        @relation(fields: [departmentId], references: [departmentId])
+  tasks             Task[]
+  activityLogs      ActivityLog[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -114,6 +115,24 @@ model Setting {
   updatedAt   DateTime @updatedAt
 
   @@map("settings")
+}
+
+// Web Push plumbing (no automatic triggers yet — see src/services/
+// pushService.js). One row per browser/device a user has enabled
+// notifications on, keyed on `endpoint` (globally unique per browser
+// install) rather than userId, since a user can have several.
+model PushSubscription {
+  id             Int      @id @default(autoincrement())
+  subscriptionId String   @unique
+  userId         String
+  endpoint       String   @unique
+  p256dh         String
+  auth           String
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [userId])
+
+  @@map("push_subscriptions")
 }
 
 // Backs generateId() (src/lib/ids.js) — a dedicated counters table instead

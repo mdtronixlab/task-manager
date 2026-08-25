@@ -11,13 +11,17 @@ export default function ThemeToggle({ className = '' }) {
       onClick={toggleTheme}
       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
       className={[
-        'inline-flex size-9 shrink-0 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        'inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-on-surface-variant transition-colors hover:neu-sm hover:text-on-surface active:neu-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
         className,
       ]
         .filter(Boolean)
         .join(' ')}
     >
-      {isDark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
+      {isDark ? (
+        <Sun key="sun" className="size-4 animate-scale-in" aria-hidden="true" />
+      ) : (
+        <Moon key="moon" className="size-4 animate-scale-in" aria-hidden="true" />
+      )}
     </button>
   )
 }

@@ -1,6 +1,12 @@
 import { useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useDelayedUnmount } from '../hooks/useDelayedUnmount'
+
+// Matches the CSS animate-fade-out/animate-scale-out durations below —
+// the dialog stays mounted this long after `open` goes false so the exit
+// animation can finish instead of the dialog just vanishing.
+const EXIT_ANIMATION_MS = 180
 
 /**
  * Accessible dialog: traps Escape to close, restores focus to the trigger
@@ -11,9 +17,16 @@ export default function Modal({ open, onClose, title, description, children, foo
   const dialogRef = useRef(null)
   const titleId = useId()
   const descriptionId = useId()
+  const { visible, closing } = useDelayedUnmount(open, EXIT_ANIMATION_MS)
 
+  // Tied to `visible` (not `open`): the dialog stays mounted and fully
+  // interactive for EXIT_ANIMATION_MS after `open` goes false while its
+  // exit animation plays, so Escape must keep working and focus must not
+  // jump back to the trigger until it's actually gone — otherwise there's
+  // a window where the "closed" dialog is still visible/focusable but
+  // Escape no longer closes it and focus has already left.
   useEffect(() => {
-    if (!open) return undefined
+    if (!visible) return undefined
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') onClose?.()
@@ -27,13 +40,17 @@ export default function Modal({ open, onClose, title, description, children, foo
       document.removeEventListener('keydown', handleKeyDown)
       if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus()
     }
-  }, [open, onClose])
+  }, [visible, onClose])
 
-  if (!open) return null
+  if (!visible) return null
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
+      <div
+        className={`absolute inset-0 bg-black/50 backdrop-blur-md ${closing ? 'animate-fade-out' : 'animate-fade-in'}`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <div
         ref={dialogRef}
         role="dialog"
@@ -41,7 +58,7 @@ export default function Modal({ open, onClose, title, description, children, foo
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className="relative z-10 w-full max-w-lg rounded-xl border border-outline-variant bg-surface-container-high p-6 text-on-surface shadow-xl focus-visible:outline-none"
+        className={`neu-strong relative z-10 w-full max-w-lg rounded-2xl p-6 text-on-surface focus-visible:outline-none ${closing ? 'animate-scale-out' : 'animate-scale-in'}`}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
@@ -60,7 +77,7 @@ export default function Modal({ open, onClose, title, description, children, foo
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="rounded-md p-1 text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface"
+            className="rounded-md p-1 text-on-surface-variant transition-colors hover:bg-white/[0.08] hover:text-on-surface"
           >
             <X className="size-5" aria-hidden="true" />
           </button>

@@ -30,6 +30,7 @@ export const ID_PREFIX = {
   CATEGORY: 'CAT',
   DEPARTMENT: 'DEP',
   LOG: 'LOG',
+  PUSH_SUBSCRIPTION: 'PSH',
 };
 
 // phases.md Phase 7 lists more (TASK_DELETED, USER_UPDATED, USER_DISABLED)
@@ -44,6 +45,8 @@ export const ACTIVITY_ACTIONS = {
   STATUS_CHANGED: 'STATUS_CHANGED',
   TASK_COMPLETED: 'TASK_COMPLETED',
   TASK_BLOCKED: 'TASK_BLOCKED',
+  TASK_CARRIED_FORWARD: 'TASK_CARRIED_FORWARD',
+  TASK_CARRY_FORWARD_DISMISSED: 'TASK_CARRY_FORWARD_DISMISSED',
   SETTINGS_UPDATED: 'SETTINGS_UPDATED',
   USER_CREATED: 'USER_CREATED',
   DEPARTMENT_CREATED: 'DEPARTMENT_CREATED',
@@ -63,4 +66,11 @@ export const config = {
   firebaseProjectId: () => requiredEnv('FIREBASE_PROJECT_ID'),
   bootstrapAdminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL || null,
   bootstrapAdminName: process.env.BOOTSTRAP_ADMIN_NAME || null,
+  // Web Push (generate with `npx web-push generate-vapid-keys`, or
+  // node -e "console.log(require('web-push').generateVAPIDKeys())").
+  // Optional at startup — pushService only requires these once a push
+  // route is actually called, so a server without them still runs fine.
+  vapidPublicKey: process.env.VAPID_PUBLIC_KEY || null,
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || null,
+  vapidSubject: process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
 };

@@ -4,7 +4,7 @@
 
 export function Table({ className = '', children, ...props }) {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-outline-variant">
+    <div className="neu w-full overflow-x-auto rounded-2xl">
       <table
         className={['w-full border-collapse text-left text-body-sm', className]
           .filter(Boolean)
@@ -19,7 +19,10 @@ export function Table({ className = '', children, ...props }) {
 
 export function TableHeader({ className = '', children, ...props }) {
   return (
-    <thead className={['bg-surface-container-low', className].filter(Boolean).join(' ')} {...props}>
+    <thead
+      className={['border-b border-outline-variant/40', className].filter(Boolean).join(' ')}
+      {...props}
+    >
       {children}
     </thead>
   )
@@ -28,7 +31,7 @@ export function TableHeader({ className = '', children, ...props }) {
 export function TableBody({ className = '', children, ...props }) {
   return (
     <tbody
-      className={['divide-y divide-outline-variant', className].filter(Boolean).join(' ')}
+      className={['divide-y divide-outline-variant/30', className].filter(Boolean).join(' ')}
       {...props}
     >
       {children}
@@ -39,9 +42,7 @@ export function TableBody({ className = '', children, ...props }) {
 export function TableRow({ className = '', children, ...props }) {
   return (
     <tr
-      className={['transition-colors hover:bg-surface-container-low', className]
-        .filter(Boolean)
-        .join(' ')}
+      className={['transition-colors hover:bg-primary/[0.06]', className].filter(Boolean).join(' ')}
       {...props}
     >
       {children}

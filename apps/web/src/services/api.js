@@ -65,3 +65,23 @@ export const api = {
 export function getCurrentUser() {
   return api.get('/api/users/me')
 }
+
+/** GET /api/push/vapid-public-key — public half of the server's VAPID key pair. */
+export function getPushPublicKey() {
+  return api.get('/api/push/vapid-public-key')
+}
+
+/** POST /api/push/subscribe — `subscription` is a PushSubscription.toJSON(). */
+export function subscribeToPush(subscription) {
+  return api.post('/api/push/subscribe', { subscription })
+}
+
+/** POST /api/push/unsubscribe */
+export function unsubscribeFromPush(endpoint) {
+  return api.post('/api/push/unsubscribe', { endpoint })
+}
+
+/** POST /api/push/test — sends a test notification to the current user. */
+export function sendTestPushNotification() {
+  return api.post('/api/push/test')
+}

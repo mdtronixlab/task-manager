@@ -3,21 +3,7 @@ import { Card } from '../Card'
 import Button from '../Button'
 import StatusBadge from '../StatusBadge'
 import PriorityBadge from '../PriorityBadge'
-import { TASK_STATUS } from '../../constants/taskStatus'
-
-// Mirrors the backend's authoritative transition map
-// (apps/api/src/services/taskService.js TASK_STATUS_TRANSITIONS,
-// rules.md §22) — this only decides which buttons to *show*; the backend
-// independently re-validates every transition (architecture.md §12).
-const STATUS_ACTIONS = {
-  [TASK_STATUS.PENDING]: [{ label: 'Start', next: TASK_STATUS.IN_PROGRESS, variant: 'primary' }],
-  [TASK_STATUS.IN_PROGRESS]: [
-    { label: 'Complete', next: TASK_STATUS.COMPLETED, variant: 'primary' },
-    { label: 'Block', next: TASK_STATUS.BLOCKED, variant: 'secondary' },
-  ],
-  [TASK_STATUS.BLOCKED]: [{ label: 'Resume', next: TASK_STATUS.IN_PROGRESS, variant: 'primary' }],
-  [TASK_STATUS.COMPLETED]: [{ label: 'Reopen', next: TASK_STATUS.IN_PROGRESS, variant: 'ghost' }],
-}
+import { TASK_STATUS, TASK_STATUS_ACTIONS } from '../../constants/taskStatus'
 
 function formatTime(iso) {
   if (!iso) return null
@@ -34,18 +20,47 @@ function formatDate(dateStr) {
  * @param {{
  *   task: object, categoryName?: string, busy?: boolean,
  *   onStatusChange?: (taskId: string, nextStatus: string) => void,
- *   onEdit?: (task: object) => void,
+ *   onEdit?: (task: object) => void, onView?: (task: object) => void,
  *   readOnly?: boolean,
  * }} props `readOnly` drops the edit button and status actions and shows
  *   the task's date — for history views (prd.md §10: "Historical tasks may
  *   be viewed but should not be casually modified"), where cards span
  *   multiple days so the date can't stay implicit like it can on "today."
+ *   `onView` opens the full "manage task" detail modal (TaskDetailModal, via
+ *   TaskList) on a click anywhere on the card that isn't the edit button or
+ *   a status action — those stopPropagation so they fire their own action
+ *   instead of also opening the detail modal underneath it.
  */
-export default function TaskCard({ task, categoryName, busy, onStatusChange, onEdit, readOnly = false }) {
-  const actions = readOnly ? [] : STATUS_ACTIONS[task.status] || []
+export default function TaskCard({ task, categoryName, busy, onStatusChange, onEdit, onView, readOnly = false }) {
+  const actions = readOnly ? [] : TASK_STATUS_ACTIONS[task.status] || []
 
   return (
-    <Card className="flex flex-col gap-3 p-4">
+    <Card
+      interactive={Boolean(onView)}
+      onClick={onView ? () => onView(task) : undefined}
+      role={onView ? 'button' : undefined}
+      tabIndex={onView ? 0 : undefined}
+      onKeyDown={
+        onView
+          ? (event) => {
+              // Card renders a plain div, not a real <button> — a real one
+              // can't wrap the edit/status-action buttons inside it (nested
+              // interactive elements are invalid HTML), so Enter/Space
+              // activation has to be done by hand here instead of coming
+              // free from the browser.
+              if (event.key !== 'Enter' && event.key !== ' ') return
+              event.preventDefault()
+              onView(task)
+            }
+          : undefined
+      }
+      className={[
+        'flex flex-col gap-3 p-4',
+        onView ? 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-body-md font-medium text-on-surface">{task.title}</h3>
@@ -56,7 +71,10 @@ export default function TaskCard({ task, categoryName, busy, onStatusChange, onE
         {!readOnly && (
           <button
             type="button"
-            onClick={() => onEdit(task)}
+            onClick={(event) => {
+              event.stopPropagation()
+              onEdit(task)
+            }}
             aria-label={`Edit ${task.title}`}
             className="shrink-0 rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface"
           >
@@ -91,7 +109,10 @@ export default function TaskCard({ task, categoryName, busy, onStatusChange, onE
               size="sm"
               variant={action.variant}
               loading={busy}
-              onClick={() => onStatusChange(task.taskId, action.next)}
+              onClick={(event) => {
+                event.stopPropagation()
+                onStatusChange(task.taskId, action.next)
+              }}
             >
               {action.label}
             </Button>

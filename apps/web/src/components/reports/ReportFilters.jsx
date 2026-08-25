@@ -12,14 +12,16 @@ export default function ReportFilters({ filters, onChange, staff = [], departmen
     return (event) => onChange({ ...filters, [key]: event.target.value })
   }
 
+  // Grid rather than flex-wrap — same reasoning as tasks/TaskFilters.jsx:
+  // fixed per-field widths wrapped unevenly at narrow viewports.
   return (
-    <div className="flex flex-wrap items-end gap-3">
+    <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-4">
       <Select
         label="Date range"
         value={filters.range}
         onChange={set('range')}
         options={DATE_RANGE_OPTIONS}
-        containerClassName="w-40"
+        containerClassName="w-full"
       />
       {filters.range === 'custom' && (
         <>
@@ -28,14 +30,14 @@ export default function ReportFilters({ filters, onChange, staff = [], departmen
             type="date"
             value={filters.dateFrom}
             onChange={set('dateFrom')}
-            containerClassName="w-40"
+            containerClassName="w-full"
           />
           <Input
             label="To"
             type="date"
             value={filters.dateTo}
             onChange={set('dateTo')}
-            containerClassName="w-40"
+            containerClassName="w-full"
           />
         </>
       )}
@@ -44,7 +46,7 @@ export default function ReportFilters({ filters, onChange, staff = [], departmen
         value={filters.userId}
         onChange={set('userId')}
         options={[{ value: '', label: 'All Staff' }, ...staff.map((s) => ({ value: s.userId, label: s.name }))]}
-        containerClassName="w-44"
+        containerClassName="w-full"
       />
       <Select
         label="Department"
@@ -54,7 +56,7 @@ export default function ReportFilters({ filters, onChange, staff = [], departmen
           { value: '', label: 'All Departments' },
           ...departments.map((d) => ({ value: d.departmentId, label: d.name })),
         ]}
-        containerClassName="w-44"
+        containerClassName="w-full"
       />
     </div>
   )

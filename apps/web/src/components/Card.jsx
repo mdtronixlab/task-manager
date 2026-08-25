@@ -1,13 +1,20 @@
 // Cards per design.md §3/§11: rounded, separated by border + surface
-// contrast rather than heavy shadows.
+// contrast rather than heavy shadows. Redesigned 2026-08-25 as neumorphic
+// "soft UI" (.neu, styles/index.css) — the card is the same colour as the
+// page and reads as a raised bump purely through a light/dark shadow
+// pair, replacing the 08-24 frosted-glass pass (no more border, tint, or
+// backdrop-blur here).
 
-export function Card({ as: Component = 'div', className = '', children, ...props }) {
+// Shared tactile treatment for cards that act like a single click target
+// (KPI tiles, task cards) — .neu-interactive owns the actual hover/active
+// shadow states (styles/index.css); one definition instead of the same
+// string copy-pasted across StatTile/CompletionMeter/TaskCard.
+const INTERACTIVE_CLASSES = 'neu-interactive cursor-pointer'
+
+export function Card({ as: Component = 'div', interactive = false, className = '', children, ...props }) {
   return (
     <Component
-      className={[
-        'rounded-lg border border-outline-variant bg-surface-container text-on-surface',
-        className,
-      ]
+      className={['neu rounded-2xl text-on-surface', interactive && INTERACTIVE_CLASSES, className]
         .filter(Boolean)
         .join(' ')}
       {...props}

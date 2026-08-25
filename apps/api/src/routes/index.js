@@ -7,6 +7,7 @@ import departmentsRouter from './departments.js';
 import reportsRouter from './reports.js';
 import settingsRouter from './settings.js';
 import activityLogsRouter from './activityLogs.js';
+import pushRouter from './push.js';
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use('/departments', departmentsRouter);
 router.use('/reports', reportsRouter);
 router.use('/settings', settingsRouter);
 router.use('/activity-logs', activityLogsRouter);
+router.use('/push', pushRouter);
 
 export default router;

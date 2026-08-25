@@ -28,14 +28,19 @@ export default function TaskFilters({
     return (event) => onChange({ ...filters, [key]: event.target.value })
   }
 
+  // A grid rather than flex-wrap: fixed per-field widths (w-40/w-44) wrapped
+  // unevenly at narrow widths — each field landed on its own line in a
+  // slightly different position instead of lining up. Grid columns give
+  // every field an equal-width cell that lines up regardless of which
+  // optional filters (staff/department/custom range) are showing.
   return (
-    <div className="flex flex-wrap items-end gap-3">
+    <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-3 lg:grid-cols-4">
       <Select
         label="Date range"
         value={filters.range}
         onChange={set('range')}
         options={DATE_RANGE_OPTIONS}
-        containerClassName="w-40"
+        containerClassName="w-full"
       />
       {filters.range === 'custom' && (
         <>
@@ -44,14 +49,14 @@ export default function TaskFilters({
             type="date"
             value={filters.dateFrom}
             onChange={set('dateFrom')}
-            containerClassName="w-40"
+            containerClassName="w-full"
           />
           <Input
             label="To"
             type="date"
             value={filters.dateTo}
             onChange={set('dateTo')}
-            containerClassName="w-40"
+            containerClassName="w-full"
           />
         </>
       )}
@@ -61,7 +66,7 @@ export default function TaskFilters({
           value={filters.userId}
           onChange={set('userId')}
           options={[{ value: '', label: 'All Staff' }, ...staff.map((s) => ({ value: s.userId, label: s.name }))]}
-          containerClassName="w-44"
+          containerClassName="w-full"
         />
       )}
       {showDepartmentFilter && (
@@ -73,7 +78,7 @@ export default function TaskFilters({
             { value: '', label: 'All Departments' },
             ...departments.map((d) => ({ value: d.departmentId, label: d.name })),
           ]}
-          containerClassName="w-44"
+          containerClassName="w-full"
         />
       )}
       <Select
@@ -84,7 +89,7 @@ export default function TaskFilters({
           { value: '', label: 'All Categories' },
           ...categories.map((c) => ({ value: c.categoryId, label: c.name })),
         ]}
-        containerClassName="w-44"
+        containerClassName="w-full"
       />
       <Select
         label="Status"
@@ -94,7 +99,7 @@ export default function TaskFilters({
           { value: '', label: 'All Statuses' },
           ...Object.values(TASK_STATUS).map((s) => ({ value: s, label: TASK_STATUS_META[s].label })),
         ]}
-        containerClassName="w-40"
+        containerClassName="w-full"
       />
       <Select
         label="Priority"
@@ -104,7 +109,7 @@ export default function TaskFilters({
           { value: '', label: 'All Priorities' },
           ...Object.values(TASK_PRIORITY).map((p) => ({ value: p, label: TASK_PRIORITY_META[p].label })),
         ]}
-        containerClassName="w-40"
+        containerClassName="w-full"
       />
     </div>
   )

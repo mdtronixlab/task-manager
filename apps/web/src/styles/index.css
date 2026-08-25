@@ -98,6 +98,22 @@
   --font-headline: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-label: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* ------------------------------------------------------------------
+     Neumorphism tokens (2026-08-25 redesign, replaces the 08-24 glass
+     pass). Soft-UI shapes read as raised/pressed purely through a pair
+     of shadows cast in opposite directions from an imagined light
+     source (top-left) — no border, no transparency, surface stays the
+     *same* colour as the page behind it. Needs a light-catch shadow and
+     a dark-recess shadow per theme (dark mode's "light" catch is a
+     faint highlight, not white; light mode's "dark" shadow is a cool
+     grey, not black) — tokenised here, consumed via the .neu / .neu-sm
+     / .neu-strong / .neu-inset utilities below.
+     Recipe: https://neumorphism.io, adapted to this app's existing
+     surface colours rather than the classic #e0e5ec demo grey. */
+  --neu-surface: var(--color-background);
+  --neu-light: rgb(255 255 255 / 4%);
+  --neu-dark: rgb(0 0 0 / 65%);
 }
 
 /* Light palette (design.md §4) — wired, not yet default. Values derived
@@ -161,6 +177,10 @@
   --color-chart-series-1: #2a78d6;
   --color-chart-series-2: #1baf7a;
   --color-brand: #2a78d6;
+
+  --neu-surface: var(--color-background);
+  --neu-light: rgb(255 255 255 / 90%);
+  --neu-dark: rgb(163 177 198 / 55%);
 }
 
 /* Map the runtime tokens above into Tailwind utilities (bg-surface,
@@ -294,9 +314,232 @@ body {
   color: var(--color-on-surface);
 }
 
+/* ==========================================================================
+   Neumorphism utilities (2026-08-25 redesign, replaces the 08-24 glass
+   pass — see --neu-* tokens above for the per-theme shadow colours).
+
+   Soft UI has one rule that matters more than any shadow value: the
+   element's own background MUST equal the surface it's sitting on, or
+   the shadow reads as a drop-shadow (a card floating above the page)
+   instead of the page itself pinching into a raised bump. That's why
+   every class below sets `background: var(--neu-surface)` rather than
+   any of the old --color-surface-container-* steps — those existed to
+   make glass panels distinguishable from the page by tint; neumorphism
+   makes them distinguishable by shadow alone.
+
+   .neu        — default raised surface: cards, tiles, tables, buttons.
+   .neu-sm     — same raised look, tighter shadow spread for small
+                 controls (badges, icon wells) where the full-size
+                 shadow would overpower the shape.
+   .neu-strong — deeper shadow for chrome that needs to visually sit
+                 above other .neu panels (sidebar, header, dropdowns,
+                 modals) despite being the same flat colour.
+   .neu-inset  — pressed/recessed look: active toggles, focused inputs,
+                 anything that should read as "pushed in" rather than
+                 "popped out".
+   ========================================================================== */
+/* @utility (not a plain class) so hover:/focus:/active: variants work on
+   these the same as any built-in Tailwind utility — Button's ghost
+   variant leans on hover:neu-sm below. */
+@utility neu {
+  background: var(--neu-surface);
+  box-shadow:
+    -6px -6px 14px var(--neu-light),
+    6px 6px 14px var(--neu-dark);
+}
+
+@utility neu-sm {
+  background: var(--neu-surface);
+  box-shadow:
+    -3px -3px 7px var(--neu-light),
+    3px 3px 7px var(--neu-dark);
+}
+
+@utility neu-strong {
+  background: var(--neu-surface);
+  box-shadow:
+    -10px -10px 22px var(--neu-light),
+    10px 10px 22px var(--neu-dark);
+}
+
+@utility neu-inset {
+  background: var(--neu-surface);
+  box-shadow:
+    inset -4px -4px 10px var(--neu-light),
+    inset 4px 4px 10px var(--neu-dark);
+}
+
+/* Tactile response for anything clickable: shadow deepens on hover (lifts
+   further off the page) and inverts to .neu-inset's pressed shadow on
+   :active (pushes in) — the physical metaphor soft UI is named for. Pair
+   with .neu on the element; this only owns the transition + the two
+   state overrides. */
+.neu-interactive {
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+.neu-interactive:hover {
+  box-shadow:
+    -10px -10px 22px var(--neu-light),
+    10px 10px 22px var(--neu-dark);
+}
+.neu-interactive:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset -4px -4px 10px var(--neu-light),
+    inset 4px 4px 10px var(--neu-dark);
+}
+
 /* Accessibility (rules.md §10): focus must stay visible everywhere,
    including inside custom components that reset outline. */
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Motion
+   Small, reusable keyframes + utility classes rather than a new dependency
+   (framer-motion etc.) — consistent with this app's plain-CSS approach
+   elsewhere (animate-spin on LoadingState, transition-colors throughout).
+   ========================================================================== */
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes scale-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out backwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out backwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.18s ease-out backwards;
+}
+
+.animate-fade-out {
+  animation: fade-out 0.18s ease-in forwards;
+}
+
+.animate-scale-out {
+  animation: scale-out 0.16s ease-in forwards;
+}
+
+.animate-toast-in {
+  animation: toast-in 0.25s ease-out backwards;
+}
+
+.animate-toast-out {
+  animation: toast-out 0.2s ease-in forwards;
+}
+
+/* Stagger a static row of children (dashboard KPI tiles) by position
+   instead of prop-drilling an index into StatTile/CompletionMeter. */
+.stagger-children > * {
+  animation: fade-in-up 0.4s ease-out backwards;
+}
+.stagger-children > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-children > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.stagger-children > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.stagger-children > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.stagger-children > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.stagger-children > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.stagger-children > *:nth-child(7) {
+  animation-delay: 240ms;
+}
+
+/* rules.md §10 accessibility: motion must be easy to turn off. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

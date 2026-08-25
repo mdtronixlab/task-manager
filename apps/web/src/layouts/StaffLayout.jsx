@@ -1,53 +1,37 @@
-import { LogOut } from 'lucide-react'
-import { NavLink, Outlet } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import Button from '../components/Button'
-import Logo from '../components/Logo'
-import ProfileIcon from '../components/ProfileIcon'
-import ThemeToggle from '../components/ThemeToggle'
+import { LayoutDashboard, History, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import AppShell from './AppShell'
 
+// `icon` is only used by the mobile bottom nav bar (AppShell) — the
+// header's text nav (sm and up) doesn't need one.
 const NAV_LINKS = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/tasks/history', label: 'History' },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/tasks/history', label: 'History', icon: History },
 ]
-
-function navLinkClassName({ isActive }) {
-  return [
-    'rounded-sm text-body-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-    isActive ? 'text-on-surface font-medium' : 'text-on-surface-variant hover:text-on-surface',
-  ].join(' ')
-}
 
 // Used two ways, same reasoning as AdminLayout.jsx: explicit `children` for
 // /dashboard (shared path, can't be a nested route here), or as a
-// react-router layout route via <Outlet/> for /tasks/history.
+// react-router layout route via <Outlet/> for /tasks/history — both
+// handled by AppShell.
 export default function StaffLayout({ children }) {
-  const { appUser, signOut } = useAuth()
+  const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-background text-on-surface">
-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-outline-variant px-6 py-4">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <Logo size="sm" />
-          <nav className="flex flex-wrap items-center gap-4">
-            {NAV_LINKS.map((link) => (
-              <NavLink key={link.to} to={link.to} className={navLinkClassName}>
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          <ThemeToggle />
-          <ProfileIcon name={appUser?.name} avatarUrl={appUser?.avatar} size="sm" />
-          <p className="hidden text-body-sm text-on-surface-variant sm:block">{appUser?.name}</p>
-          <Button variant="ghost" size="sm" onClick={signOut}>
-            <LogOut className="size-4" aria-hidden="true" />
-            Sign out
-          </Button>
-        </div>
-      </header>
-      <main className="mx-auto max-w-5xl px-6 py-8">{children ?? <Outlet />}</main>
-    </div>
+    <AppShell
+      navLinks={NAV_LINKS}
+      maxWidthClassName="max-w-5xl"
+      quickAction={{
+        icon: Plus,
+        label: 'Add task',
+        // Always routes through /dashboard — that's the only page with the
+        // add-task modal (StaffDashboard.jsx). A changing `quickAddTask`
+        // value (not just `true`) so clicking this while already on
+        // /dashboard still produces a new location.state the page's effect
+        // will notice, even though the pathname doesn't change.
+        onClick: () => navigate('/dashboard', { state: { quickAddTask: Date.now() } }),
+      }}
+    >
+      {children}
+    </AppShell>
   )
 }

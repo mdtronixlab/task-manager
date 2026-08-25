@@ -1,0 +1,685 @@
+diff --git a/apps/web/src/components/Button.jsx b/apps/web/src/components/Button.jsx
+index 77bf764..75eb074 100644
+--- a/apps/web/src/components/Button.jsx
++++ b/apps/web/src/components/Button.jsx
+@@ -46,8 +46,8 @@ const Button = forwardRef(function Button(
+       disabled={isDisabled}
+       aria-busy={loading || undefined}
+       className={[
+-        'inline-flex items-center justify-center rounded-md font-medium transition-colors',
+-        'disabled:cursor-not-allowed disabled:opacity-50',
++        'inline-flex items-center justify-center rounded-md font-medium transition active:scale-[0.97]',
++        'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
+         fullWidth ? 'w-full' : '',
+         VARIANT_CLASSES[variant],
+         SIZE_CLASSES[size],
+diff --git a/apps/web/src/components/Modal.jsx b/apps/web/src/components/Modal.jsx
+index 0626870..8d62892 100644
+--- a/apps/web/src/components/Modal.jsx
++++ b/apps/web/src/components/Modal.jsx
+@@ -1,7 +1,12 @@
+-import { useEffect, useId, useRef } from 'react'
++import { useEffect, useId, useRef, useState } from 'react'
+ import { createPortal } from 'react-dom'
+ import { X } from 'lucide-react'
+ 
++// Matches the CSS animate-fade-out/animate-scale-out durations below —
++// the dialog stays mounted this long after `open` goes false so the exit
++// animation can finish instead of the dialog just vanishing.
++const EXIT_ANIMATION_MS = 180
++
+ /**
+  * Accessible dialog: traps Escape to close, restores focus to the trigger
+  * on close, and is announced via role="dialog"/aria-modal (rules.md §10).
+@@ -11,6 +16,26 @@ export default function Modal({ open, onClose, title, description, children, foo
+   const dialogRef = useRef(null)
+   const titleId = useId()
+   const descriptionId = useId()
++  const [visible, setVisible] = useState(open)
++  const [closing, setClosing] = useState(false)
++
++  useEffect(() => {
++    if (open) {
++      setVisible(true)
++      setClosing(false)
++      return undefined
++    }
++    if (!visible) return undefined
++    setClosing(true)
++    const timeout = setTimeout(() => {
++      setVisible(false)
++      setClosing(false)
++    }, EXIT_ANIMATION_MS)
++    return () => clearTimeout(timeout)
++    // `visible` deliberately excluded — this should only re-run when `open`
++    // itself changes, not when the timeout above updates `visible`.
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [open])
+ 
+   useEffect(() => {
+     if (!open) return undefined
+@@ -29,11 +54,15 @@ export default function Modal({ open, onClose, title, description, children, foo
+     }
+   }, [open, onClose])
+ 
+-  if (!open) return null
++  if (!visible) return null
+ 
+   return createPortal(
+     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+-      <div className="absolute inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
++      <div
++        className={`absolute inset-0 bg-black/60 ${closing ? 'animate-fade-out' : 'animate-fade-in'}`}
++        onClick={onClose}
++        aria-hidden="true"
++      />
+       <div
+         ref={dialogRef}
+         role="dialog"
+@@ -41,7 +70,7 @@ export default function Modal({ open, onClose, title, description, children, foo
+         aria-labelledby={title ? titleId : undefined}
+         aria-describedby={description ? descriptionId : undefined}
+         tabIndex={-1}
+-        className="relative z-10 w-full max-w-lg rounded-xl border border-outline-variant bg-surface-container-high p-6 text-on-surface shadow-xl focus-visible:outline-none"
++        className={`relative z-10 w-full max-w-lg rounded-xl border border-outline-variant bg-surface-container-high p-6 text-on-surface shadow-xl focus-visible:outline-none ${closing ? 'animate-scale-out' : 'animate-scale-in'}`}
+       >
+         <div className="mb-4 flex items-start justify-between gap-4">
+           <div>
+diff --git a/apps/web/src/components/ThemeToggle.jsx b/apps/web/src/components/ThemeToggle.jsx
+index 5be6584..053c4b7 100644
+--- a/apps/web/src/components/ThemeToggle.jsx
++++ b/apps/web/src/components/ThemeToggle.jsx
+@@ -11,13 +11,17 @@ export default function ThemeToggle({ className = '' }) {
+       onClick={toggleTheme}
+       aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+       className={[
+-        'inline-flex size-9 shrink-0 items-center justify-center rounded-md text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
++        'inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+         className,
+       ]
+         .filter(Boolean)
+         .join(' ')}
+     >
+-      {isDark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
++      {isDark ? (
++        <Sun key="sun" className="size-4 animate-scale-in" aria-hidden="true" />
++      ) : (
++        <Moon key="moon" className="size-4 animate-scale-in" aria-hidden="true" />
++      )}
+     </button>
+   )
+ }
+diff --git a/apps/web/src/components/dashboard/CompletionMeter.jsx b/apps/web/src/components/dashboard/CompletionMeter.jsx
+index 82048da..e6b9dbc 100644
+--- a/apps/web/src/components/dashboard/CompletionMeter.jsx
++++ b/apps/web/src/components/dashboard/CompletionMeter.jsx
+@@ -1,18 +1,46 @@
++import { useEffect, useState } from 'react'
++import { Gauge } from 'lucide-react'
+ import { Card } from '../Card'
++import { useCountUp } from '../../hooks/useCountUp'
+ 
+ // Completion is a ratio against a limit (0–100%), not a magnitude to
+ // compare — a meter, not another bare number (dataviz skill: choosing-a-form).
++// Styled as a Lovelace tile with its progress bar as the tile's "feature"
++// row, matching StatTile's icon-badge layout above it.
+ export default function CompletionMeter({ rate, className = '' }) {
++  const displayRate = useCountUp(rate)
++
++  // Bar starts at 0 and transitions to `rate` right after mount, so the
++  // fill reads as motion rather than appearing pre-filled (the width
++  // transition below only animates on a *change*, not the initial paint).
++  const [barWidth, setBarWidth] = useState(0)
++  useEffect(() => {
++    const frame = requestAnimationFrame(() => setBarWidth(rate))
++    return () => cancelAnimationFrame(frame)
++  }, [rate])
++
+   return (
+-    <Card className={['p-4', className].filter(Boolean).join(' ')}>
+-      <div className="flex items-baseline justify-between">
+-        <p className="text-label-md font-label uppercase text-on-surface-variant">Completion</p>
+-        <p className="text-body-md font-medium tabular-nums text-on-surface">{rate}%</p>
++    <Card
++      className={[
++        'rounded-2xl p-4 transition hover:-translate-y-0.5 hover:border-outline hover:shadow-md',
++        className,
++      ]
++        .filter(Boolean)
++        .join(' ')}
++    >
++      <div className="flex items-center gap-3">
++        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-tone-primary-bg text-tone-primary-text">
++          <Gauge className="size-5" aria-hidden="true" />
++        </span>
++        <div className="min-w-0">
++          <p className="truncate text-label-md font-label uppercase text-on-surface-variant">Completion</p>
++          <p className="text-headline-md font-headline tabular-nums text-on-surface">{displayRate}%</p>
++        </div>
+       </div>
+       <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
+         <div
+-          className="h-full rounded-full bg-primary transition-[width]"
+-          style={{ width: `${rate}%` }}
++          className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
++          style={{ width: `${barWidth}%` }}
+         />
+       </div>
+     </Card>
+diff --git a/apps/web/src/components/dashboard/OrgSummary.jsx b/apps/web/src/components/dashboard/OrgSummary.jsx
+index 7f5c1dc..1677bf8 100644
+--- a/apps/web/src/components/dashboard/OrgSummary.jsx
++++ b/apps/web/src/components/dashboard/OrgSummary.jsx
+@@ -1,16 +1,21 @@
++import { Users, ListChecks, Clock, PlayCircle, CheckCircle2, Ban } from 'lucide-react'
+ import StatTile from './StatTile'
+ import CompletionMeter from './CompletionMeter'
+ 
+ /** Super Admin dashboard's organisation-wide KPI row (prd.md §12, phases.md Phase 4). */
+ export default function OrgSummary({ organisation }) {
+   return (
+-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+-      <StatTile label="Staff" value={`${organisation.activeStaffCount}/${organisation.staffCount}`} />
+-      <StatTile label="Total Tasks" value={organisation.total} />
+-      <StatTile label="Pending" value={organisation.pending} tone="warning" />
+-      <StatTile label="In Progress" value={organisation.inProgress} tone="primary" />
+-      <StatTile label="Completed" value={organisation.completed} tone="success" />
+-      <StatTile label="Blocked" value={organisation.blocked} tone="error" />
++    <div className="stagger-children grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
++      <StatTile
++        label="Staff"
++        value={`${organisation.activeStaffCount}/${organisation.staffCount}`}
++        icon={Users}
++      />
++      <StatTile label="Total Tasks" value={organisation.total} icon={ListChecks} />
++      <StatTile label="Pending" value={organisation.pending} tone="warning" icon={Clock} />
++      <StatTile label="In Progress" value={organisation.inProgress} tone="primary" icon={PlayCircle} />
++      <StatTile label="Completed" value={organisation.completed} tone="success" icon={CheckCircle2} />
++      <StatTile label="Blocked" value={organisation.blocked} tone="error" icon={Ban} />
+       <CompletionMeter rate={organisation.completionRate} className="col-span-2 sm:col-span-1" />
+     </div>
+   )
+diff --git a/apps/web/src/components/dashboard/StatTile.jsx b/apps/web/src/components/dashboard/StatTile.jsx
+index 7360cae..62ad1d3 100644
+--- a/apps/web/src/components/dashboard/StatTile.jsx
++++ b/apps/web/src/components/dashboard/StatTile.jsx
+@@ -1,24 +1,46 @@
+ import { Card } from '../Card'
++import { useCountUp } from '../../hooks/useCountUp'
+ 
+ // Reuses this app's existing status-tone tokens (constants/taskStatus.js
+ // TASK_STATUS_META) rather than a new palette — same tones already used
+ // everywhere via StatusBadge (dataviz skill: a handful of headline numbers
+ // → stat tiles, colored by the status palette parameter, not invented hues).
+-const TONE_TEXT_CLASSES = {
+-  neutral: 'text-on-surface',
+-  warning: 'text-tone-warning-text',
+-  primary: 'text-tone-primary-text',
+-  success: 'text-tone-success-text',
+-  error: 'text-tone-error-text',
++// Same bg/text pairing as Badge.jsx's TONE_CLASSES.
++const TONE_CLASSES = {
++  neutral: 'bg-tone-neutral-bg text-tone-neutral-text',
++  warning: 'bg-tone-warning-bg text-tone-warning-text',
++  primary: 'bg-tone-primary-bg text-tone-primary-text',
++  success: 'bg-tone-success-bg text-tone-success-text',
++  error: 'bg-tone-error-bg text-tone-error-text',
+ }
+ 
+-export default function StatTile({ label, value, tone = 'neutral', className = '' }) {
++// Home Assistant Lovelace "tile" layout: a colour-washed icon badge leading
++// a name/state stack, inside a generously rounded card. The icon carries the
++// tone here (not the number) so status still isn't colour-only — the label
++// text next to it says the same thing in words (rules.md §10).
++export default function StatTile({ label, value, tone = 'neutral', icon: Icon, className = '' }) {
++  const displayValue = useCountUp(value)
++
+   return (
+-    <Card className={['p-4', className].filter(Boolean).join(' ')}>
+-      <p className="text-label-md font-label uppercase text-on-surface-variant">{label}</p>
+-      <p className={`mt-1 text-headline-lg font-headline tabular-nums ${TONE_TEXT_CLASSES[tone]}`}>
+-        {value}
+-      </p>
++    <Card
++      className={[
++        'flex items-center gap-3 rounded-2xl p-4 transition hover:-translate-y-0.5 hover:border-outline hover:shadow-md',
++        className,
++      ]
++        .filter(Boolean)
++        .join(' ')}
++    >
++      {Icon && (
++        <span
++          className={`flex size-11 shrink-0 items-center justify-center rounded-full ${TONE_CLASSES[tone]}`}
++        >
++          <Icon className="size-5" aria-hidden="true" />
++        </span>
++      )}
++      <div className="min-w-0">
++        <p className="truncate text-label-md font-label uppercase text-on-surface-variant">{label}</p>
++        <p className="text-headline-md font-headline tabular-nums text-on-surface">{displayValue}</p>
++      </div>
+     </Card>
+   )
+ }
+diff --git a/apps/web/src/components/dashboard/TaskSummary.jsx b/apps/web/src/components/dashboard/TaskSummary.jsx
+index 59594ed..6793d63 100644
+--- a/apps/web/src/components/dashboard/TaskSummary.jsx
++++ b/apps/web/src/components/dashboard/TaskSummary.jsx
+@@ -1,15 +1,16 @@
++import { ListChecks, Clock, PlayCircle, CheckCircle2, Ban } from 'lucide-react'
+ import StatTile from './StatTile'
+ import CompletionMeter from './CompletionMeter'
+ 
+ /** Staff dashboard's own-tasks KPI row (prd.md §11). */
+ export default function TaskSummary({ summary }) {
+   return (
+-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+-      <StatTile label="Total" value={summary.total} />
+-      <StatTile label="Pending" value={summary.pending} tone="warning" />
+-      <StatTile label="In Progress" value={summary.inProgress} tone="primary" />
+-      <StatTile label="Completed" value={summary.completed} tone="success" />
+-      <StatTile label="Blocked" value={summary.blocked} tone="error" />
++    <div className="stagger-children grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
++      <StatTile label="Total" value={summary.total} icon={ListChecks} />
++      <StatTile label="Pending" value={summary.pending} tone="warning" icon={Clock} />
++      <StatTile label="In Progress" value={summary.inProgress} tone="primary" icon={PlayCircle} />
++      <StatTile label="Completed" value={summary.completed} tone="success" icon={CheckCircle2} />
++      <StatTile label="Blocked" value={summary.blocked} tone="error" icon={Ban} />
+       <CompletionMeter rate={summary.completionRate} className="col-span-2 sm:col-span-1" />
+     </div>
+   )
+diff --git a/apps/web/src/components/tasks/TaskCard.jsx b/apps/web/src/components/tasks/TaskCard.jsx
+index 8a9cd49..2775d6b 100644
+--- a/apps/web/src/components/tasks/TaskCard.jsx
++++ b/apps/web/src/components/tasks/TaskCard.jsx
+@@ -45,7 +45,7 @@ export default function TaskCard({ task, categoryName, busy, onStatusChange, onE
+   const actions = readOnly ? [] : STATUS_ACTIONS[task.status] || []
+ 
+   return (
+-    <Card className="flex flex-col gap-3 p-4">
++    <Card className="flex flex-col gap-3 p-4 transition hover:-translate-y-0.5 hover:border-outline hover:shadow-md">
+       <div className="flex items-start justify-between gap-3">
+         <div className="min-w-0">
+           <h3 className="truncate text-body-md font-medium text-on-surface">{task.title}</h3>
+diff --git a/apps/web/src/context/ToastContext.jsx b/apps/web/src/context/ToastContext.jsx
+index bae48e4..c74373c 100644
+--- a/apps/web/src/context/ToastContext.jsx
++++ b/apps/web/src/context/ToastContext.jsx
+@@ -7,6 +7,10 @@ const ToastContext = createContext(null)
+ const TONE_ICON = { success: CheckCircle2, error: AlertTriangle }
+ const TONE_ICON_CLASS = { success: 'text-tone-success-text', error: 'text-tone-error-text' }
+ const DEFAULT_DURATION_MS = 4000
++// Matches the CSS animate-toast-out duration — a toast is kept in state
++// (marked `leaving`) this long after dismissal so its exit animation can
++// play before it's actually removed from the list.
++const EXIT_ANIMATION_MS = 200
+ 
+ /**
+  * Transient confirmation for a mutating action (task saved, status changed,
+@@ -19,7 +23,10 @@ export function ToastProvider({ children }) {
+   const [toasts, setToasts] = useState([])
+ 
+   const dismissToast = useCallback((id) => {
+-    setToasts((prev) => prev.filter((t) => t.id !== id))
++    setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, leaving: true } : t)))
++    setTimeout(() => {
++      setToasts((prev) => prev.filter((t) => t.id !== id))
++    }, EXIT_ANIMATION_MS)
+   }, [])
+ 
+   const showToast = useCallback(
+@@ -54,7 +61,7 @@ function ToastViewport({ toasts, onDismiss }) {
+             key={toast.id}
+             role="status"
+             aria-live="polite"
+-            className="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border border-outline-variant bg-surface-container-high px-4 py-3 text-on-surface shadow-xl"
++            className={`pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border border-outline-variant bg-surface-container-high px-4 py-3 text-on-surface shadow-xl ${toast.leaving ? 'animate-toast-out' : 'animate-toast-in'}`}
+           >
+             <Icon className={`size-5 shrink-0 ${TONE_ICON_CLASS[toast.tone] || TONE_ICON_CLASS.success}`} aria-hidden="true" />
+             <p className="flex-1 text-body-sm">{toast.message}</p>
+diff --git a/apps/web/src/layouts/AdminLayout.jsx b/apps/web/src/layouts/AdminLayout.jsx
+index 1f36c59..fd42dfc 100644
+--- a/apps/web/src/layouts/AdminLayout.jsx
++++ b/apps/web/src/layouts/AdminLayout.jsx
+@@ -1,5 +1,5 @@
+ import { LogOut } from 'lucide-react'
+-import { NavLink, Outlet } from 'react-router-dom'
++import { NavLink, Outlet, useLocation } from 'react-router-dom'
+ import { useAuth } from '../context/AuthContext'
+ import Button from '../components/Button'
+ import Badge from '../components/Badge'
+@@ -15,10 +15,15 @@ const NAV_LINKS = [
+   { to: '/settings', label: 'Settings' },
+ ]
+ 
++// Active link gets a filled pill in the same primary tone StatTile/Badge
++// already use for "primary" (design.md §6–7 — reuse the tone tokens rather
++// than inventing a new active-state colour).
+ function navLinkClassName({ isActive }) {
+   return [
+-    'rounded-sm text-body-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+-    isActive ? 'text-on-surface font-medium' : 'text-on-surface-variant hover:text-on-surface',
++    'rounded-full px-3 py-1.5 text-body-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
++    isActive
++      ? 'bg-tone-primary-bg font-medium text-tone-primary-text'
++      : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+   ].join(' ')
+ }
+ 
+@@ -36,34 +41,44 @@ function navLinkClassName({ isActive }) {
+ // /tasks, /staff/:userId).
+ export default function AdminLayout({ children }) {
+   const { appUser, signOut } = useAuth()
++  const { pathname } = useLocation()
+ 
+   return (
+     <div className="min-h-screen bg-background text-on-surface">
+-      <header className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3 border-b border-outline-variant px-6 py-4">
+-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
++      {/* Transparent sticky gutter so the header reads as a card floating
++          over the page rather than a bar flush with the viewport edges —
++          page content scrolls up into the gap behind/around it. */}
++      <div className="sticky top-0 z-40 px-4 pt-4">
++        <header className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-5 gap-y-3 rounded-2xl border border-outline-variant bg-surface-container/90 px-6 py-4 shadow-lg backdrop-blur-sm">
++          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
++            <div className="flex items-center gap-3">
++              <Logo size="sm" />
++              <Badge tone="primary">Super Admin</Badge>
++            </div>
++            <nav className="flex flex-wrap items-center gap-1">
++              {NAV_LINKS.map((link) => (
++                <NavLink key={link.to} to={link.to} className={navLinkClassName}>
++                  {link.label}
++                </NavLink>
++              ))}
++            </nav>
++          </div>
+           <div className="flex items-center gap-3">
+-            <Logo size="sm" />
+-            <Badge tone="primary">Super Admin</Badge>
++            <ThemeToggle />
++            <ProfileIcon name={appUser?.name} avatarUrl={appUser?.avatar} size="sm" />
++            <p className="text-body-sm text-on-surface-variant">{appUser?.name}</p>
++            <Button variant="ghost" size="sm" onClick={signOut}>
++              <LogOut className="size-4" aria-hidden="true" />
++              Sign out
++            </Button>
+           </div>
+-          <nav className="flex flex-wrap items-center gap-4">
+-            {NAV_LINKS.map((link) => (
+-              <NavLink key={link.to} to={link.to} className={navLinkClassName}>
+-                {link.label}
+-              </NavLink>
+-            ))}
+-          </nav>
+-        </div>
+-        <div className="flex items-center gap-3">
+-          <ThemeToggle />
+-          <ProfileIcon name={appUser?.name} avatarUrl={appUser?.avatar} size="sm" />
+-          <p className="text-body-sm text-on-surface-variant">{appUser?.name}</p>
+-          <Button variant="ghost" size="sm" onClick={signOut}>
+-            <LogOut className="size-4" aria-hidden="true" />
+-            Sign out
+-          </Button>
+-        </div>
+-      </header>
+-      <main className="mx-auto max-w-7xl px-6 py-8">{children ?? <Outlet />}</main>
++        </header>
++      </div>
++      {/* Keyed on pathname so the fade-in replays on each navigation, not
++          just on first mount. */}
++      <main key={pathname} className="mx-auto max-w-7xl px-6 py-8 animate-fade-in-up">
++        {children ?? <Outlet />}
++      </main>
+     </div>
+   )
+ }
+diff --git a/apps/web/src/layouts/StaffLayout.jsx b/apps/web/src/layouts/StaffLayout.jsx
+index 0240542..cd71c48 100644
+--- a/apps/web/src/layouts/StaffLayout.jsx
++++ b/apps/web/src/layouts/StaffLayout.jsx
+@@ -1,5 +1,5 @@
+ import { LogOut } from 'lucide-react'
+-import { NavLink, Outlet } from 'react-router-dom'
++import { NavLink, Outlet, useLocation } from 'react-router-dom'
+ import { useAuth } from '../context/AuthContext'
+ import Button from '../components/Button'
+ import Logo from '../components/Logo'
+@@ -11,10 +11,15 @@ const NAV_LINKS = [
+   { to: '/tasks/history', label: 'History' },
+ ]
+ 
++// Active link gets a filled pill in the same primary tone StatTile/Badge
++// already use for "primary" (design.md §6–7 — reuse the tone tokens rather
++// than inventing a new active-state colour). Same treatment as AdminLayout.
+ function navLinkClassName({ isActive }) {
+   return [
+-    'rounded-sm text-body-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+-    isActive ? 'text-on-surface font-medium' : 'text-on-surface-variant hover:text-on-surface',
++    'rounded-full px-3 py-1.5 text-body-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
++    isActive
++      ? 'bg-tone-primary-bg font-medium text-tone-primary-text'
++      : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+   ].join(' ')
+ }
+ 
+@@ -23,31 +28,41 @@ function navLinkClassName({ isActive }) {
+ // react-router layout route via <Outlet/> for /tasks/history.
+ export default function StaffLayout({ children }) {
+   const { appUser, signOut } = useAuth()
++  const { pathname } = useLocation()
+ 
+   return (
+     <div className="min-h-screen bg-background text-on-surface">
+-      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-outline-variant px-6 py-4">
+-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+-          <Logo size="sm" />
+-          <nav className="flex flex-wrap items-center gap-4">
+-            {NAV_LINKS.map((link) => (
+-              <NavLink key={link.to} to={link.to} className={navLinkClassName}>
+-                {link.label}
+-              </NavLink>
+-            ))}
+-          </nav>
+-        </div>
+-        <div className="flex items-center gap-3">
+-          <ThemeToggle />
+-          <ProfileIcon name={appUser?.name} avatarUrl={appUser?.avatar} size="sm" />
+-          <p className="hidden text-body-sm text-on-surface-variant sm:block">{appUser?.name}</p>
+-          <Button variant="ghost" size="sm" onClick={signOut}>
+-            <LogOut className="size-4" aria-hidden="true" />
+-            Sign out
+-          </Button>
+-        </div>
+-      </header>
+-      <main className="mx-auto max-w-5xl px-6 py-8">{children ?? <Outlet />}</main>
++      {/* Transparent sticky gutter so the header reads as a card floating
++          over the page rather than a bar flush with the viewport edges —
++          page content scrolls up into the gap behind/around it. */}
++      <div className="sticky top-0 z-40 px-4 pt-4">
++        <header className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-outline-variant bg-surface-container/90 px-6 py-4 shadow-lg backdrop-blur-sm">
++          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
++            <Logo size="sm" />
++            <nav className="flex flex-wrap items-center gap-1">
++              {NAV_LINKS.map((link) => (
++                <NavLink key={link.to} to={link.to} className={navLinkClassName}>
++                  {link.label}
++                </NavLink>
++              ))}
++            </nav>
++          </div>
++          <div className="flex items-center gap-3">
++            <ThemeToggle />
++            <ProfileIcon name={appUser?.name} avatarUrl={appUser?.avatar} size="sm" />
++            <p className="hidden text-body-sm text-on-surface-variant sm:block">{appUser?.name}</p>
++            <Button variant="ghost" size="sm" onClick={signOut}>
++              <LogOut className="size-4" aria-hidden="true" />
++              Sign out
++            </Button>
++          </div>
++        </header>
++      </div>
++      {/* Keyed on pathname so the fade-in replays on each navigation, not
++          just on first mount. */}
++      <main key={pathname} className="mx-auto max-w-5xl px-6 py-8 animate-fade-in-up">
++        {children ?? <Outlet />}
++      </main>
+     </div>
+   )
+ }
+diff --git a/apps/web/src/styles/index.css b/apps/web/src/styles/index.css
+index 918d377..9d505e3 100644
+--- a/apps/web/src/styles/index.css
++++ b/apps/web/src/styles/index.css
+@@ -300,3 +300,150 @@ body {
+   outline: 2px solid var(--color-primary);
+   outline-offset: 2px;
+ }
++
++/* ==========================================================================
++   Motion
++   Small, reusable keyframes + utility classes rather than a new dependency
++   (framer-motion etc.) — consistent with this app's plain-CSS approach
++   elsewhere (animate-spin on LoadingState, transition-colors throughout).
++   ========================================================================== */
++
++@keyframes fade-in-up {
++  from {
++    opacity: 0;
++    transform: translateY(6px);
++  }
++  to {
++    opacity: 1;
++    transform: translateY(0);
++  }
++}
++
++@keyframes fade-in {
++  from {
++    opacity: 0;
++  }
++  to {
++    opacity: 1;
++  }
++}
++
++@keyframes scale-in {
++  from {
++    opacity: 0;
++    transform: scale(0.96);
++  }
++  to {
++    opacity: 1;
++    transform: scale(1);
++  }
++}
++
++@keyframes fade-out {
++  from {
++    opacity: 1;
++  }
++  to {
++    opacity: 0;
++  }
++}
++
++@keyframes scale-out {
++  from {
++    opacity: 1;
++    transform: scale(1);
++  }
++  to {
++    opacity: 0;
++    transform: scale(0.96);
++  }
++}
++
++@keyframes toast-in {
++  from {
++    opacity: 0;
++    transform: translateY(8px) scale(0.98);
++  }
++  to {
++    opacity: 1;
++    transform: translateY(0) scale(1);
++  }
++}
++
++@keyframes toast-out {
++  from {
++    opacity: 1;
++    transform: translateY(0) scale(1);
++  }
++  to {
++    opacity: 0;
++    transform: translateY(4px) scale(0.98);
++  }
++}
++
++.animate-fade-in-up {
++  animation: fade-in-up 0.4s ease-out backwards;
++}
++
++.animate-fade-in {
++  animation: fade-in 0.2s ease-out backwards;
++}
++
++.animate-scale-in {
++  animation: scale-in 0.18s ease-out backwards;
++}
++
++.animate-fade-out {
++  animation: fade-out 0.18s ease-in forwards;
++}
++
++.animate-scale-out {
++  animation: scale-out 0.16s ease-in forwards;
++}
++
++.animate-toast-in {
++  animation: toast-in 0.25s ease-out backwards;
++}
++
++.animate-toast-out {
++  animation: toast-out 0.2s ease-in forwards;
++}
++
++/* Stagger a static row of children (dashboard KPI tiles) by position
++   instead of prop-drilling an index into StatTile/CompletionMeter. */
++.stagger-children > * {
++  animation: fade-in-up 0.4s ease-out backwards;
++}
++.stagger-children > *:nth-child(1) {
++  animation-delay: 0ms;
++}
++.stagger-children > *:nth-child(2) {
++  animation-delay: 40ms;
++}
++.stagger-children > *:nth-child(3) {
++  animation-delay: 80ms;
++}
++.stagger-children > *:nth-child(4) {
++  animation-delay: 120ms;
++}
++.stagger-children > *:nth-child(5) {
++  animation-delay: 160ms;
++}
++.stagger-children > *:nth-child(6) {
++  animation-delay: 200ms;
++}
++.stagger-children > *:nth-child(7) {
++  animation-delay: 240ms;
++}
++
++/* rules.md §10 accessibility: motion must be easy to turn off. */
++@media (prefers-reduced-motion: reduce) {
++  *,
++  *::before,
++  *::after {
++    animation-duration: 0.001ms !important;
++    animation-iteration-count: 1 !important;
++    transition-duration: 0.001ms !important;
++    scroll-behavior: auto !important;
++  }
++}

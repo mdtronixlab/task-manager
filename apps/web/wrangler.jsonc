@@ -1,0 +1,8 @@
+{
+  // Cloudflare Pages project config for this app only — the monorepo's
+  // apps/api (Express + Prisma/SQLite) is a long-running server and isn't
+  // deployed through this file; it needs its own Node host.
+  "name": "organisation-task-manager",
+  "pages_build_output_dir": "dist",
+  "compatibility_date": "2025-01-01"
+}

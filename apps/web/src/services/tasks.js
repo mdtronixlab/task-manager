@@ -19,3 +19,19 @@ export function createTask(data) {
 export function updateTask(taskId, data) {
   return api.patch(`/api/tasks/${taskId}`, data)
 }
+
+/** Past, unfinished tasks of the current user's that haven't been carried
+ * forward or dismissed yet — see apps/api/src/services/taskService.js. */
+export function getCarryForwardCandidates() {
+  return api.get('/api/tasks/carry-forward-candidates')
+}
+
+/** Creates today's copy of a past unfinished task and marks the original resolved. */
+export function carryForwardTask(taskId) {
+  return api.post(`/api/tasks/${taskId}/carry-forward`)
+}
+
+/** Marks a past unfinished task as "not carrying this forward" — leaves it as-is. */
+export function dismissCarryForward(taskId) {
+  return api.post(`/api/tasks/${taskId}/dismiss-carry-forward`)
+}

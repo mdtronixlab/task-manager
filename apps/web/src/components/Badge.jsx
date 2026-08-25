@@ -14,7 +14,11 @@ export default function Badge({ tone = 'neutral', children, className = '', ...p
   return (
     <span
       className={[
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1',
+        // Soft UI reads status chips as small pressed wells rather than a
+        // bordered/frosted pill — shadow-inner (Tailwind's fixed generic
+        // inset shadow, not the --neu-* pair) works here because it's
+        // layered on the tone's own flat colour, not the page surface.
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 shadow-inner',
         'text-label-md font-label uppercase',
         TONE_CLASSES[tone],
         className,

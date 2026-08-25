@@ -1,0 +1,6 @@
+# Client-side routing (react-router's BrowserRouter, src/main.jsx) means
+# every real route — /dashboard, /tasks/history, /staff/:id, etc. — only
+# exists in JS. Without this, a direct link or refresh on any of them 404s
+# on Cloudflare Pages; this falls back to index.html so the SPA can take
+# over and resolve the route itself.
+/* /index.html 200
