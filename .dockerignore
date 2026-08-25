@@ -1,0 +1,13 @@
+# Applies to both Dockerfiles — their build context is the repo root
+# (docker-compose.yml's `context: .`), so this keeps that build context
+# small and, more importantly, keeps secrets/local state out of any image
+# layer.
+**/node_modules
+**/dist
+**/.env
+**/.env.local
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+apps/api/service-account.json
+.git
+documents

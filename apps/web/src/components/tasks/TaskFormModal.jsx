@@ -11,8 +11,18 @@ const PRIORITY_OPTIONS = Object.values(TASK_PRIORITY).map((value) => ({
   label: TASK_PRIORITY_META[value].label,
 }))
 
-function emptyForm() {
-  return { title: '', description: '', priority: DEFAULT_TASK_PRIORITY, categoryId: '' }
+function emptyForm(staffOptions) {
+  // Pre-select when there's exactly one choice (StaffDetailPage passes a
+  // single-staff-member list — the assignee is already implied by the
+  // page, so there's nothing to actually pick) — otherwise force a real
+  // choice (TasksPage's full staff list starts unselected).
+  return {
+    title: '',
+    description: '',
+    priority: DEFAULT_TASK_PRIORITY,
+    categoryId: '',
+    userId: staffOptions?.length === 1 ? staffOptions[0].userId : '',
+  }
 }
 
 /**
@@ -24,12 +34,19 @@ function emptyForm() {
  * @param {{
  *   open: boolean, onClose: () => void, onSubmit: (data: object) => Promise<void>,
  *   categories: {categoryId: string, name: string}[], task?: object|null, submitting?: boolean,
- * }} props `task` present = editing; absent/null = creating.
+ *   staffOptions?: {userId: string, name: string}[],
+ * }} props `task` present = editing; absent/null = creating. `staffOptions`
+ *   is Admin-only — TasksPage/StaffDetailPage pass the assignable staff
+ *   list, which adds an "Assign to" field (required) and folds `userId`
+ *   into onSubmit's payload; StaffDashboard (self-service) omits it
+ *   entirely and the field never renders. Reassigning an *existing* task's
+ *   owner isn't in scope — the field only shows up when creating.
  */
-export default function TaskFormModal({ open, onClose, onSubmit, categories, task, submitting }) {
-  const [form, setForm] = useState(emptyForm)
+export default function TaskFormModal({ open, onClose, onSubmit, categories, task, submitting, staffOptions }) {
+  const [form, setForm] = useState(() => emptyForm(staffOptions))
   const [error, setError] = useState(null)
   const isEditing = Boolean(task)
+  const showAssignee = Boolean(staffOptions) && !isEditing
 
   useEffect(() => {
     if (!open) return
@@ -41,9 +58,14 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
             description: task.description || '',
             priority: task.priority,
             categoryId: task.categoryId || '',
+            userId: '',
           }
-        : emptyForm(),
+        : emptyForm(staffOptions),
     )
+    // staffOptions is only re-passed as a genuinely new array when the
+    // page's own staff data reloads, not every render — safe to leave out
+    // of the deps without risking a stale list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, task])
 
   function updateField(field) {
@@ -56,6 +78,10 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
       setError('Title is required.')
       return
     }
+    if (showAssignee && !form.userId) {
+      setError('Choose who this task is for.')
+      return
+    }
     setError(null)
     try {
       await onSubmit({
@@ -63,6 +89,7 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
         description: form.description.trim(),
         priority: form.priority,
         categoryId: form.categoryId || null,
+        ...(showAssignee ? { userId: form.userId } : {}),
       })
     } catch (err) {
       setError(err.message || 'Could not save the task. Please try again.')
@@ -86,6 +113,18 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
       }
     >
       <form id="task-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {showAssignee && (
+          <Select
+            label="Assign to"
+            required
+            value={form.userId}
+            onChange={updateField('userId')}
+            options={[
+              { value: '', label: 'Choose a staff member' },
+              ...staffOptions.map((s) => ({ value: s.userId, label: s.name })),
+            ]}
+          />
+        )}
         <Input
           label="Title"
           required

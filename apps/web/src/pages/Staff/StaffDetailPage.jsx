@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Plus } from 'lucide-react'
 import { getUsers } from '../../services/users'
-import { getTasks } from '../../services/tasks'
+import { getTasks, createTask } from '../../services/tasks'
 import { getCategories } from '../../services/categories'
 import { defaultTaskFilters, buildTaskQueryParams } from '../../utils/taskFilters'
+import { useToast } from '../../context/ToastContext'
+import Button from '../../components/Button'
 import TaskFilters from '../../components/tasks/TaskFilters'
 import TaskOverviewTable from '../../components/tasks/TaskOverviewTable'
+import TaskFormModal from '../../components/tasks/TaskFormModal'
 import LoadingState from '../../components/LoadingState'
 import ErrorState from '../../components/ErrorState'
 import Badge from '../../components/Badge'
@@ -23,6 +26,9 @@ export default function StaffDetailPage() {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const { showToast } = useToast()
 
   const loadReferenceData = useCallback(async () => {
     const [users, categoryData] = await Promise.all([getUsers(), getCategories()])
@@ -64,6 +70,18 @@ export default function StaffDetailPage() {
     [staffMember],
   )
 
+  async function handleAddTask(data) {
+    setSubmitting(true)
+    try {
+      await createTask(data)
+      showToast('Task added.')
+      setModalOpen(false)
+      await loadTasks(filters)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <Link
@@ -78,18 +96,29 @@ export default function StaffDetailPage() {
         <ErrorState title="Staff member not found." description="They may have been removed." />
       ) : (
         <>
-          <div>
-            <h1 className="text-headline-lg font-headline text-on-surface">
-              {staffMember?.name || 'Loading…'}
-            </h1>
-            <p className="text-body-md text-on-surface-variant">
-              {staffMember?.email}
-              {staffMember && !staffMember.active && (
-                <Badge tone="neutral" className="ml-2">
-                  Inactive
-                </Badge>
-              )}
-            </p>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-headline-lg font-headline text-on-surface">
+                {staffMember?.name || 'Loading…'}
+              </h1>
+              <p className="text-body-md text-on-surface-variant">
+                {staffMember?.email}
+                {staffMember && !staffMember.active && (
+                  <Badge tone="neutral" className="ml-2">
+                    Inactive
+                  </Badge>
+                )}
+              </p>
+            </div>
+            {/* Assigning a new task to a disabled account is rejected
+                server-side (taskService.js's createTask) — no point
+                offering the button for one. */}
+            {staffMember?.active && (
+              <Button onClick={() => setModalOpen(true)}>
+                <Plus className="size-4" aria-hidden="true" />
+                Add Task
+              </Button>
+            )}
           </div>
 
           <TaskFilters
@@ -106,6 +135,17 @@ export default function StaffDetailPage() {
             <ErrorState description={error} onRetry={() => loadTasks(filters)} />
           ) : (
             <TaskOverviewTable tasks={tasks} staffById={staffById} categoriesById={categoriesById} />
+          )}
+
+          {staffMember?.active && (
+            <TaskFormModal
+              open={modalOpen}
+              onClose={() => setModalOpen(false)}
+              onSubmit={handleAddTask}
+              categories={categories}
+              submitting={submitting}
+              staffOptions={[staffMember]}
+            />
           )}
         </>
       )}

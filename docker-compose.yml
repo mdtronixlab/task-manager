@@ -1,0 +1,144 @@
+# Local/self-hosted alternative to the split deployment in README.md
+# (Cloudflare Pages for apps/web + your own Node host for apps/api) — runs
+# both in containers on one machine. `docker compose up --build` works with
+# zero config (Firebase just shows its existing "not configured" screen,
+# services/auth.js's isFirebaseConfigured guard — same as running apps/web
+# locally with a blank .env); see README.md's Docker section for wiring up
+# real Firebase/VAPID values.
+#
+# CasaOS: the `x-casaos` blocks below are metadata CasaOS reads to show
+# this stack with a proper name/icon/"Open" link in its dashboard once
+# it's running (docker-compose's own engine ignores unknown `x-*` keys
+# entirely, so this changes nothing about plain `docker compose` behaviour).
+# Persisted data/secrets use CasaOS's own `/DATA/AppData/$AppID` convention
+# instead of an opaque named volume, so they show up in CasaOS's File
+# Manager and get swept up by its backup tooling like any other app.
+# `$AppID` is substituted by CasaOS itself when installed via its own UI
+# (Custom Install); running this file directly via `docker compose` (which
+# is how this project is actually deployed — see README.md) instead reads
+# it from `AppID` in a root `.env` file, falling back to `task-manager` if
+# unset — either path resolves to the same real directory.
+#
+# Note this only covers *running an already-checked-out copy* of the repo
+# through CasaOS. It's not (yet) installable via CasaOS's "Custom Install →
+# paste YAML" flow, since that expects pre-built images pulled from a
+# registry rather than a `build:` context pointing at a Dockerfile — these
+# services build from this repo's own source instead. Publishing built
+# images to a registry would be the follow-up for that; not done here.
+name: task-manager
+
+x-casaos:
+  id: com.mdtronixlab.task-manager
+  main: web
+  architectures:
+    - amd64
+    - arm64
+  category: Productivity
+  developer: mdtronixlab
+  author: mdtronixlab
+  title:
+    en_us: Organisation Task Manager
+  tagline:
+    en_us: Daily task tracking for staff and admins
+  description:
+    en_us: >-
+      Internal daily task management: staff add/complete today's tasks,
+      Super Admins assign tasks to individual staff and review activity
+      across the organisation. Express + Prisma/SQLite API behind a static
+      React frontend.
+  # Self-contained (embedded) so the icon shows up in CasaOS's dashboard
+  # regardless of network reachability — same mark as apps/web/public/icon.svg.
+  icon: data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CiAgPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOSIgZmlsbD0iIzM5ODdlNSIgLz4KICA8cGF0aCBkPSJNOS41IDE2LjVsNCA0IDktOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIC8+Cjwvc3ZnPgo=
+  # Where CasaOS's "Open" button points — web's *published* host port, the
+  # same reasoning as VITE_API_URL below (browser-facing, not internal).
+  scheme: http
+  port_map: "8080"
+  index: /
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "4000:4000"
+    # Same one-time-setup file the non-Docker flow already documents
+    # (`cp apps/api/.env.example apps/api/.env`) — env_file requires the
+    # file to exist, so that copy has to happen before `docker compose up`.
+    env_file:
+      - apps/api/.env
+    environment:
+      # Overrides whatever's in apps/api/.env with this container's own
+      # filesystem layout / topology — these depend on the compose stack
+      # itself, not values a human picks, so they don't belong in the
+      # shared .env file (which apps/api/.env.example still defaults to
+      # :5173, matching non-Docker `npm run dev:web`'s Vite dev server —
+      # a real mismatch here fails every API call with a CORS error, not
+      # loudly, so it's worth getting right).
+      DATABASE_URL: file:/app/data/app.db
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets/service-account.json
+      # Must match whatever origin the browser actually loads `web` from —
+      # localhost:8080 only holds for the pure-local flow; a host reached
+      # over a LAN/Tailscale IP or a real domain needs CORS_ORIGIN set to
+      # match (e.g. `CORS_ORIGIN=http://100.x.x.x:8080` in a root .env, same
+      # override mechanism as VITE_API_URL below).
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+    volumes:
+      # CasaOS convention (see the top-of-file note) — a bind mount here
+      # instead of a Docker-managed named volume so the SQLite file is
+      # visible in CasaOS's File Manager and covered by its backups. Still
+      # survives `docker compose down` / image rebuilds either way; only
+      # deleting the directory itself loses it. Compose creates the host
+      # directory on first `up` if it doesn't already exist.
+      - /DATA/AppData/${AppID:-task-manager}/data:/app/data
+      # The Firebase service-account key is a secret; it's bind-mounted
+      # read-only from the host rather than ever being baked into the image
+      # (apps/api/service-account.json is gitignored for the same reason).
+      # Must exist at this path before `docker compose up` — see README.md.
+      - /DATA/AppData/${AppID:-task-manager}/service-account.json:/app/secrets/service-account.json:ro
+    restart: unless-stopped
+    x-casaos:
+      envs:
+        - container: CORS_ORIGIN
+          description:
+            en_us: Origin the web app is served from (browser-facing) — must match exactly or every API call fails CORS.
+        - container: DATABASE_URL
+          description:
+            en_us: SQLite database file path inside the container.
+      ports:
+        - container: "4000"
+          description:
+            en_us: Express API
+      volumes:
+        - container: /app/data
+          description:
+            en_us: SQLite database storage.
+        - container: /app/secrets/service-account.json
+          description:
+            en_us: Firebase service-account key (read-only).
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Reaches the browser on the host, not the Docker network — this is
+        # what the user's browser calls, so it has to be the api service's
+        # published host port, never the internal service name/port.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+        VITE_APP_NAME: ${VITE_APP_NAME:-Organisation Task Manager}
+        VITE_APP_ENV: ${VITE_APP_ENV:-production}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-task-manager-app-2d85c}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    x-casaos:
+      ports:
+        - container: "80"
+          description:
+            en_us: Web app (nginx)

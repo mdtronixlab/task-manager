@@ -210,7 +210,11 @@ export async function dismissCarryForward(currentUser, taskId) {
 
 /**
  * @param {object} currentUser
- * @param {object} data {title, description, priority, categoryId}
+ * @param {object} data {title, description, priority, categoryId, userId?}
+ *   `userId` — a Super Admin assigning this task to a staff member instead
+ *   of themselves. Silently ignored for a STAFF caller (rules.md §13: never
+ *   trust a userId the client supplies) — they always get their own task
+ *   regardless of what's in the request body, same as getTasks already does.
  */
 export async function createTask(currentUser, data = {}) {
   const title = requireString(data.title, 'Task title', 200);
@@ -224,10 +228,20 @@ export async function createTask(currentUser, data = {}) {
     categoryId = data.categoryId;
   }
 
+  const isAdmin = currentUser.role === ROLES.SUPER_ADMIN;
+  let targetUserId = currentUser.userId;
+  if (isAdmin && data.userId && data.userId !== currentUser.userId) {
+    const assignee = await prisma.user.findUnique({ where: { userId: data.userId } });
+    if (!assignee) throw ValidationError('Staff member does not exist.');
+    if (assignee.role !== ROLES.STAFF) throw ValidationError('Tasks can only be assigned to staff.');
+    if (!assignee.active) throw ValidationError('Cannot assign a task to a disabled account.');
+    targetUserId = assignee.userId;
+  }
+
   const task = await prisma.task.create({
     data: {
       taskId: await generateTaskId(),
-      userId: currentUser.userId, // never trust a userId supplied by the client
+      userId: targetUserId,
       taskDate: await today(), // never manual — prd.md #10 / memory.md Decision 1
       title,
       description,
@@ -237,7 +251,14 @@ export async function createTask(currentUser, data = {}) {
     },
   });
 
-  await logActivity(currentUser.userId, task.taskId, 'TASK_CREATED', null, null, null, { title });
+  // logActivity's userId is the *acting* user, not necessarily the task
+  // owner (its own doc comment already anticipates exactly this case) — an
+  // admin assigning a task shows up as themselves in the log, with
+  // `assignedTo` in metadata distinguishing it from a self-created task.
+  await logActivity(currentUser.userId, task.taskId, 'TASK_CREATED', null, null, null, {
+    title,
+    ...(targetUserId !== currentUser.userId ? { assignedTo: targetUserId } : {}),
+  });
 
   return shapeTask(task);
 }

@@ -1,0 +1,6 @@
+# Shell scripts run inside Linux containers (docker-entrypoint.sh) and must
+# keep LF line endings regardless of a contributor's core.autocrlf setting —
+# alpine's /bin/sh chokes on a CRLF shebang line ("no such file or
+# directory") otherwise. Without this, a Windows checkout with
+# core.autocrlf=true would silently corrupt these on `git add`.
+*.sh text eol=lf
