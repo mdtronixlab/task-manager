@@ -38,6 +38,7 @@ async function buildOrgAndStaffSummary({ dateFrom, dateTo, userId, departmentId 
     ...(userId ? { userId } : {}),
   };
   const taskWhere = {
+    deletedAt: null, // rules.md §25 — a soft-deleted task never counts here
     taskDate: { gte: dateFrom, lte: dateTo },
     ...(userId ? { userId } : {}),
     ...(departmentId ? { user: { departmentId } } : {}),
@@ -142,6 +143,7 @@ function titleCase(value) {
 export async function getTaskExportRows(params = {}) {
   const { dateFrom, dateTo } = await resolveDateBounds(params);
   const taskWhere = {
+    deletedAt: null,
     taskDate: { gte: dateFrom, lte: dateTo },
     ...(params.userId ? { userId: params.userId } : {}),
     ...(params.departmentId ? { user: { departmentId: params.departmentId } } : {}),
@@ -175,6 +177,7 @@ export async function getCompletionTrend(params = {}) {
   const { dateFrom, dateTo } = await resolveDateBounds(params);
 
   const taskWhere = {
+    deletedAt: null,
     taskDate: { gte: dateFrom, lte: dateTo },
     ...(params.userId ? { userId: params.userId } : {}),
     ...(params.departmentId ? { user: { departmentId: params.departmentId } } : {}),

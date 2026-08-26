@@ -1,4 +1,4 @@
-import { Pencil } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { Card } from '../Card'
 import Button from '../Button'
 import StatusBadge from '../StatusBadge'
@@ -8,6 +8,17 @@ import { TASK_STATUS, TASK_STATUS_ACTIONS } from '../../constants/taskStatus'
 function formatTime(iso) {
   if (!iso) return null
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
+/** "14:30" -> "2:30 PM" — dueTime is stored as a bare "HH:mm" (validate.js),
+ * not an ISO instant, so it's parsed against an arbitrary local date purely
+ * to borrow Intl's am/pm formatting rather than hand-rolling it. */
+function formatDueTime(hhmm) {
+  if (!hhmm) return null
+  return new Date(`2000-01-01T${hhmm}:00`).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 function formatDate(dateStr) {
@@ -20,18 +31,28 @@ function formatDate(dateStr) {
  * @param {{
  *   task: object, categoryName?: string, busy?: boolean,
  *   onStatusChange?: (taskId: string, nextStatus: string) => void,
- *   onEdit?: (task: object) => void, onView?: (task: object) => void,
- *   readOnly?: boolean,
- * }} props `readOnly` drops the edit button and status actions and shows
- *   the task's date — for history views (prd.md §10: "Historical tasks may
- *   be viewed but should not be casually modified"), where cards span
+ *   onEdit?: (task: object) => void, onDelete?: (task: object) => void,
+ *   onView?: (task: object) => void, readOnly?: boolean,
+ * }} props `readOnly` drops the edit/delete buttons and status actions and
+ *   shows the task's date — for history views (prd.md §10: "Historical tasks
+ *   may be viewed but should not be casually modified"), where cards span
  *   multiple days so the date can't stay implicit like it can on "today."
- *   `onView` opens the full "manage task" detail modal (TaskDetailModal, via
- *   TaskList) on a click anywhere on the card that isn't the edit button or
- *   a status action — those stopPropagation so they fire their own action
- *   instead of also opening the detail modal underneath it.
+ *   `onDelete` is optional even outside `readOnly` — omit it to show edit
+ *   only. `onView` opens the full "manage task" detail modal (TaskDetailModal,
+ *   via TaskList) on a click anywhere on the card that isn't the edit/delete
+ *   button or a status action — those stopPropagation so they fire their own
+ *   action instead of also opening the detail modal underneath it.
  */
-export default function TaskCard({ task, categoryName, busy, onStatusChange, onEdit, onView, readOnly = false }) {
+export default function TaskCard({
+  task,
+  categoryName,
+  busy,
+  onStatusChange,
+  onEdit,
+  onDelete,
+  onView,
+  readOnly = false,
+}) {
   const actions = readOnly ? [] : TASK_STATUS_ACTIONS[task.status] || []
 
   return (
@@ -69,17 +90,32 @@ export default function TaskCard({ task, categoryName, busy, onStatusChange, onE
           )}
         </div>
         {!readOnly && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation()
-              onEdit(task)
-            }}
-            aria-label={`Edit ${task.title}`}
-            className="shrink-0 rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface"
-          >
-            <Pencil className="size-4" aria-hidden="true" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                onEdit(task)
+              }}
+              aria-label={`Edit ${task.title}`}
+              className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface"
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+            </button>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onDelete(task)
+                }}
+                aria-label={`Delete ${task.title}`}
+                className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-tone-error-bg hover:text-tone-error-text"
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -96,6 +132,7 @@ export default function TaskCard({ task, categoryName, busy, onStatusChange, onE
       <p className="text-body-sm text-on-surface-variant">
         {readOnly && <>{formatDate(task.taskDate)} · </>}
         Created {formatTime(task.createdAt)}
+        {task.dueTime && <> · Due {formatDueTime(task.dueTime)}</>}
         {task.status === TASK_STATUS.COMPLETED && task.completedAt && (
           <> · Completed {formatTime(task.completedAt)}</>
         )}

@@ -10,7 +10,7 @@ export function getTasks(params = {}) {
   return api.get(`/api/tasks${query ? `?${query}` : ''}`)
 }
 
-/** @param {{title: string, description?: string, priority?: string, categoryId?: string}} data */
+/** @param {{title: string, description?: string, priority?: string, categoryId?: string, dueTime?: string}} data */
 export function createTask(data) {
   return api.post('/api/tasks', data)
 }
@@ -18,6 +18,11 @@ export function createTask(data) {
 /** @param {string} taskId @param {object} data Partial task fields to update. */
 export function updateTask(taskId, data) {
   return api.patch(`/api/tasks/${taskId}`, data)
+}
+
+/** Soft-deletes a task — owner or Super Admin only (apps/api/src/services/taskService.js). */
+export function deleteTask(taskId) {
+  return api.delete(`/api/tasks/${taskId}`)
 }
 
 /** Past, unfinished tasks of the current user's that haven't been carried

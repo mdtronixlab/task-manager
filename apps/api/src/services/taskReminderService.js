@@ -57,7 +57,9 @@ export async function runTaskReminderSweep() {
   if (staff.length === 0) return { staffCount: 0, pendingCount: 0, notified: 0 };
 
   const withTaskToday = await prisma.task.findMany({
-    where: { taskDate: date, userId: { in: staff.map((u) => u.userId) } },
+    // deletedAt: null — someone who deleted their only task for today
+    // should still get nudged, same as if they'd never added one.
+    where: { taskDate: date, deletedAt: null, userId: { in: staff.map((u) => u.userId) } },
     select: { userId: true },
     distinct: ['userId'],
   });

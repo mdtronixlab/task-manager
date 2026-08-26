@@ -50,10 +50,18 @@ model Task {
   categoryId  String?
   priority    String    @default("MEDIUM")
   status      String    @default("PENDING")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  startedAt   DateTime?
-  completedAt DateTime?
+  // "HH:mm" 24h, org-local — optional (prd.md §25 V2 "Due times"). Drives
+  // taskDueReminderService's push at that minute; dueReminderSentAt guards
+  // against sending it twice.
+  dueTime           String?
+  dueReminderSentAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  startedAt         DateTime?
+  completedAt       DateTime?
+  // Soft delete (rules.md §25) — kept for administrative auditing instead of
+  // a hard delete; excluded from every normal task query (deletedAt: null).
+  deletedAt DateTime?
 
   user         User          @relation(fields: [userId], references: [userId])
   category     Category?     @relation(fields: [categoryId], references: [categoryId])

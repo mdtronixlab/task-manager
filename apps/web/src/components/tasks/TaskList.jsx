@@ -9,8 +9,8 @@ import TaskDetailModal from './TaskDetailModal'
  * @param {{
  *   tasks: object[], categoriesById: Record<string, string>, busyTaskId?: string|null,
  *   onStatusChange?: (taskId: string, nextStatus: string) => void,
- *   onEdit?: (task: object) => void, onAddTask?: () => void,
- *   readOnly?: boolean,
+ *   onEdit?: (task: object) => void, onDelete?: (task: object) => void,
+ *   onAddTask?: () => void, readOnly?: boolean,
  * }} props Owns the "manage task" detail modal (TaskDetailModal) — opened by
  *   tapping any TaskCard — so every TaskList consumer (StaffDashboard,
  *   StaffHistoryPage) gets it for free without wiring its own state.
@@ -21,6 +21,7 @@ export default function TaskList({
   busyTaskId,
   onStatusChange,
   onEdit,
+  onDelete,
   onAddTask,
   readOnly = false,
 }) {
@@ -62,6 +63,7 @@ export default function TaskList({
               busy={busyTaskId === task.taskId}
               onStatusChange={onStatusChange}
               onEdit={onEdit}
+              onDelete={onDelete}
               onView={openDetail}
               readOnly={readOnly}
             />
@@ -77,6 +79,7 @@ export default function TaskList({
         busy={detailTask && busyTaskId === detailTask.taskId}
         onStatusChange={onStatusChange}
         onEdit={onEdit}
+        onDelete={onDelete}
         readOnly={readOnly}
       />
     </>

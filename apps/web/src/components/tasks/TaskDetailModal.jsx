@@ -25,6 +25,15 @@ function formatDate(dateStr) {
   })
 }
 
+/** "14:30" -> "2:30 PM" — same reasoning as TaskCard's formatDueTime. */
+function formatDueTime(hhmm) {
+  if (!hhmm) return null
+  return new Date(`2000-01-01T${hhmm}:00`).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 /**
  * "Manage task" detail view — opened by tapping a TaskCard (TaskList owns
  * the open/selected-task state). Shows everything the compact card can't
@@ -45,10 +54,22 @@ function formatDate(dateStr) {
  * @param {{
  *   open: boolean, onClose: () => void, task: object|null, categoryName?: string,
  *   busy?: boolean, onStatusChange?: (taskId: string, nextStatus: string) => void,
- *   onEdit?: (task: object) => void, readOnly?: boolean,
- * }} props
+ *   onEdit?: (task: object) => void, onDelete?: (task: object) => void,
+ *   readOnly?: boolean,
+ * }} props `onDelete` is optional even outside `readOnly` — omit it to show
+ *   Edit only, same as TaskCard.
  */
-export default function TaskDetailModal({ open, onClose, task, categoryName, busy, onStatusChange, onEdit, readOnly = false }) {
+export default function TaskDetailModal({
+  open,
+  onClose,
+  task,
+  categoryName,
+  busy,
+  onStatusChange,
+  onEdit,
+  onDelete,
+  readOnly = false,
+}) {
   const actions = task && !readOnly ? TASK_STATUS_ACTIONS[task.status] || [] : []
 
   return (
@@ -61,6 +82,17 @@ export default function TaskDetailModal({ open, onClose, task, categoryName, bus
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>
+          {task && !readOnly && onDelete && (
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onDelete(task)
+                onClose()
+              }}
+            >
+              Delete
+            </Button>
+          )}
           {task && !readOnly && (
             <Button
               variant="secondary"
@@ -106,6 +138,13 @@ export default function TaskDetailModal({ open, onClose, task, categoryName, bus
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-body-sm">
             <dt className="text-on-surface-variant">Date</dt>
             <dd className="text-on-surface">{formatDate(task.taskDate)}</dd>
+
+            {task.dueTime && (
+              <>
+                <dt className="text-on-surface-variant">Due</dt>
+                <dd className="text-on-surface">{formatDueTime(task.dueTime)}</dd>
+              </>
+            )}
 
             <dt className="text-on-surface-variant">Created</dt>
             <dd className="text-on-surface">{formatDateTime(task.createdAt)}</dd>

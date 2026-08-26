@@ -5,6 +5,7 @@ import {
   getTasks,
   createTask,
   updateTask,
+  deleteTask,
   getCarryForwardCandidates,
   carryForwardTask,
   dismissCarryForward,
@@ -59,6 +60,14 @@ router.post('/:taskId/dismiss-carry-forward', async (req, res, next) => {
 router.patch('/:taskId', async (req, res, next) => {
   try {
     res.json(success(await updateTask(req.user, req.params.taskId, req.body)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:taskId', async (req, res, next) => {
+  try {
+    res.json(success(await deleteTask(req.user, req.params.taskId), 'Task deleted.'));
   } catch (err) {
     next(err);
   }

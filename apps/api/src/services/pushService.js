@@ -1,8 +1,8 @@
 // Web Push plumbing — permission + subscription storage, a manual test
-// send, and the daily "add your task" reminder (taskReminderService.js).
-// Further automatic triggers (e.g. a BLOCKED task notifying Super Admins)
-// can call sendToUser() the same way sendTaskReminder/sendTestNotification
-// below do.
+// send, the daily "add your task" reminder (taskReminderService.js), and
+// the per-task due-time reminder (taskDueReminderService.js). Further
+// automatic triggers (e.g. a BLOCKED task notifying Super Admins) can call
+// sendToUser() the same way the functions below do.
 
 import webpush from 'web-push';
 import { prisma } from '../db.js';
@@ -136,5 +136,18 @@ export async function sendTaskReminder(user) {
   return sendToUser(user.userId, {
     title: 'Add your task for today',
     body: `Hi ${user.name.split(' ')[0]}, you haven't added a task for today yet.`,
+  });
+}
+
+/**
+ * Nudges a task's owner at the due time they set for it. Called by
+ * taskDueReminderService's per-minute tick, once per task (dueReminderSentAt
+ * guards against a repeat) — never directly from a route.
+ */
+export async function sendTaskDueReminder(user, task) {
+  ensureConfigured();
+  return sendToUser(user.userId, {
+    title: 'Task due',
+    body: `"${task.title}" is due now.`,
   });
 }

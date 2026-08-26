@@ -5,6 +5,7 @@ import {
   getTasks,
   createTask,
   updateTask,
+  deleteTask,
   getCarryForwardCandidates,
   carryForwardTask,
   dismissCarryForward,
@@ -15,6 +16,7 @@ import { useToast } from "../../context/ToastContext";
 import Button from "../../components/Button";
 import LoadingState from "../../components/LoadingState";
 import ErrorState from "../../components/ErrorState";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import TaskSummary from "../../components/dashboard/TaskSummary";
 import TaskList from "../../components/tasks/TaskList";
 import TaskFormModal from "../../components/tasks/TaskFormModal";
@@ -53,6 +55,8 @@ export default function StaffDashboard() {
   const [editingTask, setEditingTask] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [busyTaskId, setBusyTaskId] = useState(null);
+  const [deletingTask, setDeletingTask] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -121,6 +125,21 @@ export default function StaffDashboard() {
       await loadData();
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deletingTask) return;
+    setDeleting(true);
+    try {
+      await deleteTask(deletingTask.taskId);
+      showToast("Task deleted.");
+      setDeletingTask(null);
+      await loadData();
+    } catch (err) {
+      setError(err.message || "Could not delete the task. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -214,6 +233,7 @@ export default function StaffDashboard() {
               busyTaskId={busyTaskId}
               onStatusChange={handleStatusChange}
               onEdit={openEditModal}
+              onDelete={setDeletingTask}
               onAddTask={openAddModal}
             />
           </div>
@@ -227,6 +247,17 @@ export default function StaffDashboard() {
         categories={categories}
         task={editingTask}
         submitting={submitting}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deletingTask)}
+        onClose={() => setDeletingTask(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete this task?"
+        description={deletingTask ? `"${deletingTask.title}" will be removed from your task list.` : undefined}
+        confirmLabel="Delete"
+        busy={deleting}
+        danger
       />
     </div>
   );

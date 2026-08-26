@@ -9,6 +9,7 @@ import {
   sendTestNotification,
 } from '../services/pushService.js';
 import { runTaskReminderSweep } from '../services/taskReminderService.js';
+import { runTaskDueReminderSweep } from '../services/taskDueReminderService.js';
 
 const router = Router();
 
@@ -53,6 +54,17 @@ router.post('/test', async (req, res, next) => {
 router.post('/task-reminder-sweep', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
     res.json(success(await runTaskReminderSweep(), 'Task reminder sweep run.'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Same "run it now" idea for the per-task due-time sweep
+// (taskDueReminderService.js), which otherwise only fires at the exact
+// minute a task's dueTime matches the org clock.
+router.post('/task-due-reminder-sweep', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    res.json(success(await runTaskDueReminderSweep(), 'Task due-reminder sweep run.'));
   } catch (err) {
     next(err);
   }

@@ -21,15 +21,18 @@ function emptyForm(staffOptions) {
     description: '',
     priority: DEFAULT_TASK_PRIORITY,
     categoryId: '',
+    dueTime: '',
     userId: staffOptions?.length === 1 ? staffOptions[0].userId : '',
   }
 }
 
 /**
  * Add/Edit task form (phases.md Phase 3 — fields: Title, Description,
- * Priority, Category). Task date and status are never set here — the
- * backend owns taskDate (memory.md Decision 1) and status changes go
- * through the dedicated action buttons on `TaskCard`, not this form.
+ * Priority, Category, Due time). Task date and status are never set here —
+ * the backend owns taskDate (memory.md Decision 1) and status changes go
+ * through the dedicated action buttons on `TaskCard`, not this form. Due
+ * time is optional (prd.md §25 V2) — when set, taskDueReminderService sends
+ * a push notification to the task's owner at that org-local time.
  *
  * @param {{
  *   open: boolean, onClose: () => void, onSubmit: (data: object) => Promise<void>,
@@ -58,6 +61,7 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
             description: task.description || '',
             priority: task.priority,
             categoryId: task.categoryId || '',
+            dueTime: task.dueTime || '',
             userId: '',
           }
         : emptyForm(staffOptions),
@@ -89,6 +93,7 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
         description: form.description.trim(),
         priority: form.priority,
         categoryId: form.categoryId || null,
+        dueTime: form.dueTime || null,
         ...(showAssignee ? { userId: form.userId } : {}),
       })
     } catch (err) {
@@ -158,6 +163,13 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
             ]}
           />
         </div>
+        <Input
+          type="time"
+          label="Due time"
+          hint="Optional — you'll get a notification at this time."
+          value={form.dueTime}
+          onChange={updateField('dueTime')}
+        />
         {error && (
           <p role="alert" className="text-body-sm text-error">
             {error}
