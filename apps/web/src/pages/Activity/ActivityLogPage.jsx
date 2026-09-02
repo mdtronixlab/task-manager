@@ -38,8 +38,18 @@ function describeLog(log) {
       return `updated setting "${log.field}"`
     case ACTIVITY_ACTIONS.USER_CREATED:
       return `added user ${log.newValue}`
+    case ACTIVITY_ACTIONS.USER_UPDATED:
+      return `updated ${log.field} of a user from "${log.oldValue}" to "${log.newValue}"`
+    case ACTIVITY_ACTIONS.USER_DISABLED:
+      return 'deactivated a user'
     case ACTIVITY_ACTIONS.DEPARTMENT_CREATED:
       return `added department "${log.newValue}"`
+    case ACTIVITY_ACTIONS.DEPARTMENT_UPDATED:
+      return `updated ${log.field} of a department`
+    case ACTIVITY_ACTIONS.CATEGORY_CREATED:
+      return `added category "${log.newValue}"`
+    case ACTIVITY_ACTIONS.CATEGORY_UPDATED:
+      return `updated ${log.field} of a category`
     case ACTIVITY_ACTIONS.CUSTOM_NOTIFICATION_SENT:
       return `sent notification "${log.newValue}"`
     default:

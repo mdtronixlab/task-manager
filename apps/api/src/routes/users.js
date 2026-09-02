@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { ROLES } from '../config.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { success } from '../lib/response.js';
-import { getUsers, getCurrentUser, createUser } from '../services/userService.js';
+import { getUsers, getCurrentUser, createUser, updateUser } from '../services/userService.js';
 
 const router = Router();
 
@@ -23,6 +23,14 @@ router.get('/', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
 router.post('/', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
     res.status(201).json(success(await createUser(req.user, req.body)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/:userId', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    res.json(success(await updateUser(req.user, req.params.userId, req.body), 'User updated.'));
   } catch (err) {
     next(err);
   }

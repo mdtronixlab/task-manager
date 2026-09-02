@@ -41,12 +41,10 @@ export const ID_PREFIX = {
   PUSH_SUBSCRIPTION: 'PSH',
 };
 
-// phases.md Phase 7 lists more (TASK_DELETED, USER_UPDATED, USER_DISABLED)
-// for whenever the features that trigger them get built. This is the
-// subset actually written today (rg logActivity( — grep across src/ to
-// verify before extending) — kept here rather than as free-text literals
-// so the Activity Log viewer's action filter (apps/web/src/constants/
-// activityActions.js mirrors this) always matches what can really occur.
+// Kept here rather than as free-text literals so the Activity Log viewer's
+// action filter (apps/web/src/constants/activityActions.js mirrors this)
+// always matches what can really occur (rg logActivity( — grep across
+// src/ to verify before extending).
 export const ACTIVITY_ACTIONS = {
   TASK_CREATED: 'TASK_CREATED',
   TASK_UPDATED: 'TASK_UPDATED',
@@ -58,7 +56,12 @@ export const ACTIVITY_ACTIONS = {
   TASK_DELETED: 'TASK_DELETED',
   SETTINGS_UPDATED: 'SETTINGS_UPDATED',
   USER_CREATED: 'USER_CREATED',
+  USER_UPDATED: 'USER_UPDATED',
+  USER_DISABLED: 'USER_DISABLED',
   DEPARTMENT_CREATED: 'DEPARTMENT_CREATED',
+  DEPARTMENT_UPDATED: 'DEPARTMENT_UPDATED',
+  CATEGORY_CREATED: 'CATEGORY_CREATED',
+  CATEGORY_UPDATED: 'CATEGORY_UPDATED',
   CUSTOM_NOTIFICATION_SENT: 'CUSTOM_NOTIFICATION_SENT',
 };
 

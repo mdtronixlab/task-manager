@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Upload, Trash2, UserPlus, FolderPlus } from 'lucide-react'
+import { Upload, Trash2, UserPlus, FolderPlus, Tag, Pencil } from 'lucide-react'
 import { useBranding } from '../../context/BrandingContext'
 import { useToast } from '../../context/ToastContext'
 import { updateLogo, removeLogo } from '../../services/settings'
-import { getUsers, createUser } from '../../services/users'
-import { getDepartments, createDepartment } from '../../services/departments'
+import { getUsers, createUser, updateUser } from '../../services/users'
+import { getDepartments, createDepartment, updateDepartment } from '../../services/departments'
+import { getCategories, createCategory, updateCategory } from '../../services/categories'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/Card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/Table'
 import Button from '../../components/Button'
@@ -14,14 +15,32 @@ import LoadingState from '../../components/LoadingState'
 import ErrorState from '../../components/ErrorState'
 import UserFormModal from '../../components/users/UserFormModal'
 import DepartmentFormModal from '../../components/departments/DepartmentFormModal'
+import CategoryFormModal from '../../components/categories/CategoryFormModal'
 import NotificationComposerCard from '../../components/notifications/NotificationComposerCard'
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
 
-// architecture.md §2 /settings route. Branding + adding staff for now
-// (rules.md §5 — don't build broader settings/user management before it's
-// needed; edit/deactivate can follow once asked for).
+/** Small icon-button used as each management table row's "Edit" action. */
+function EditButton({ onClick, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface"
+    >
+      <Pencil className="size-4" aria-hidden="true" />
+    </button>
+  )
+}
+
+// architecture.md §2 /settings route — Branding, Team, Departments,
+// Categories, and the notification composer. Every management table here
+// supports add + edit (including reactivating/deactivating) — a Super
+// Admin has full control over org data (rules.md §14), short of hard-
+// deleting anything with historical records attached (memory.md Decision
+// 3) — deactivating is the "removal" primitive throughout.
 export default function SettingsPage() {
   const { logoUrl, applicationName, refresh } = useBranding()
   const { showToast } = useToast()
@@ -33,21 +52,36 @@ export default function SettingsPage() {
 
   const [users, setUsers] = useState([])
   const [departments, setDepartments] = useState([])
+  const [categories, setCategories] = useState([])
   const [teamLoading, setTeamLoading] = useState(true)
   const [teamError, setTeamError] = useState(null)
-  const [addUserOpen, setAddUserOpen] = useState(false)
-  const [addingUser, setAddingUser] = useState(false)
-  const [addDeptOpen, setAddDeptOpen] = useState(false)
-  const [addingDept, setAddingDept] = useState(false)
+
+  const [userModalOpen, setUserModalOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
+  const [savingUser, setSavingUser] = useState(false)
+
+  const [deptModalOpen, setDeptModalOpen] = useState(false)
+  const [editingDept, setEditingDept] = useState(null)
+  const [savingDept, setSavingDept] = useState(false)
+
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [savingCategory, setSavingCategory] = useState(false)
+
   const departmentsById = Object.fromEntries(departments.map((d) => [d.departmentId, d.name]))
 
   const loadTeam = useCallback(async () => {
     setTeamLoading(true)
     setTeamError(null)
     try {
-      const [userData, departmentData] = await Promise.all([getUsers(), getDepartments()])
+      const [userData, departmentData, categoryData] = await Promise.all([
+        getUsers(),
+        getDepartments({ includeInactive: true }),
+        getCategories({ includeInactive: true }),
+      ])
       setUsers(userData)
       setDepartments(departmentData)
+      setCategories(categoryData)
     } catch (err) {
       setTeamError(err.message || 'Could not load the team. Please try again.')
     } finally {
@@ -59,27 +93,87 @@ export default function SettingsPage() {
     loadTeam()
   }, [loadTeam])
 
-  async function handleAddUser(data) {
-    setAddingUser(true)
+  function openAddUser() {
+    setEditingUser(null)
+    setUserModalOpen(true)
+  }
+
+  function openEditUser(user) {
+    setEditingUser(user)
+    setUserModalOpen(true)
+  }
+
+  async function handleSubmitUser(data) {
+    setSavingUser(true)
     try {
-      await createUser(data)
-      setAddUserOpen(false)
-      showToast(`${data.name} added.`)
+      if (editingUser) {
+        await updateUser(editingUser.userId, data)
+        showToast('User updated.')
+      } else {
+        await createUser(data)
+        showToast(`${data.name} added.`)
+      }
+      setUserModalOpen(false)
+      setEditingUser(null)
       await loadTeam()
     } finally {
-      setAddingUser(false)
+      setSavingUser(false)
     }
   }
 
-  async function handleAddDepartment(data) {
-    setAddingDept(true)
+  function openAddDepartment() {
+    setEditingDept(null)
+    setDeptModalOpen(true)
+  }
+
+  function openEditDepartment(department) {
+    setEditingDept(department)
+    setDeptModalOpen(true)
+  }
+
+  async function handleSubmitDepartment(data) {
+    setSavingDept(true)
     try {
-      await createDepartment(data)
-      setAddDeptOpen(false)
-      showToast(`${data.name} department added.`)
+      if (editingDept) {
+        await updateDepartment(editingDept.departmentId, data)
+        showToast('Department updated.')
+      } else {
+        await createDepartment(data)
+        showToast(`${data.name} department added.`)
+      }
+      setDeptModalOpen(false)
+      setEditingDept(null)
       await loadTeam()
     } finally {
-      setAddingDept(false)
+      setSavingDept(false)
+    }
+  }
+
+  function openAddCategory() {
+    setEditingCategory(null)
+    setCategoryModalOpen(true)
+  }
+
+  function openEditCategory(category) {
+    setEditingCategory(category)
+    setCategoryModalOpen(true)
+  }
+
+  async function handleSubmitCategory(data) {
+    setSavingCategory(true)
+    try {
+      if (editingCategory) {
+        await updateCategory(editingCategory.categoryId, data)
+        showToast('Category updated.')
+      } else {
+        await createCategory(data)
+        showToast(`${data.name} category added.`)
+      }
+      setCategoryModalOpen(false)
+      setEditingCategory(null)
+      await loadTeam()
+    } finally {
+      setSavingCategory(false)
     }
   }
 
@@ -221,7 +315,7 @@ export default function SettingsPage() {
                 pre-authorizes their email; there&rsquo;s nothing else for them to set up.
               </CardDescription>
             </div>
-            <Button size="sm" onClick={() => setAddUserOpen(true)} className="shrink-0">
+            <Button size="sm" onClick={openAddUser} className="shrink-0">
               <UserPlus className="size-4" aria-hidden="true" />
               Add user
             </Button>
@@ -241,6 +335,7 @@ export default function SettingsPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Edit</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -259,6 +354,9 @@ export default function SettingsPage() {
                     <TableCell>
                       <Badge tone={u.active ? 'success' : 'neutral'}>{u.active ? 'Active' : 'Inactive'}</Badge>
                     </TableCell>
+                    <TableCell className="text-right">
+                      <EditButton onClick={() => openEditUser(u)} label={`Edit ${u.name}`} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -274,7 +372,7 @@ export default function SettingsPage() {
               <CardTitle>Departments</CardTitle>
               <CardDescription>Used to group staff and filter tasks/reports by team.</CardDescription>
             </div>
-            <Button size="sm" onClick={() => setAddDeptOpen(true)} className="shrink-0">
+            <Button size="sm" onClick={openAddDepartment} className="shrink-0">
               <FolderPlus className="size-4" aria-hidden="true" />
               Add department
             </Button>
@@ -293,6 +391,8 @@ export default function SettingsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Edit</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -300,6 +400,61 @@ export default function SettingsPage() {
                   <TableRow key={d.departmentId}>
                     <TableCell className="font-medium text-on-surface">{d.name}</TableCell>
                     <TableCell className="text-on-surface-variant">{d.description || '—'}</TableCell>
+                    <TableCell>
+                      <Badge tone={d.active ? 'success' : 'neutral'}>{d.active ? 'Active' : 'Inactive'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <EditButton onClick={() => openEditDepartment(d)} label={`Edit ${d.name}`} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <CardTitle>Categories</CardTitle>
+              <CardDescription>Used to classify tasks — shown in the Add Task category picker.</CardDescription>
+            </div>
+            <Button size="sm" onClick={openAddCategory} className="shrink-0">
+              <Tag className="size-4" aria-hidden="true" />
+              Add category
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {teamLoading ? (
+            <LoadingState label="Loading categories…" />
+          ) : teamError ? (
+            <ErrorState description={teamError} onRetry={loadTeam} />
+          ) : categories.length === 0 ? (
+            <p className="text-body-sm text-on-surface-variant">No categories yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Edit</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {categories.map((c) => (
+                  <TableRow key={c.categoryId}>
+                    <TableCell className="font-medium text-on-surface">{c.name}</TableCell>
+                    <TableCell className="text-on-surface-variant">{c.description || '—'}</TableCell>
+                    <TableCell>
+                      <Badge tone={c.active ? 'success' : 'neutral'}>{c.active ? 'Active' : 'Inactive'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <EditButton onClick={() => openEditCategory(c)} label={`Edit ${c.name}`} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -311,17 +466,26 @@ export default function SettingsPage() {
       {!teamLoading && !teamError && <NotificationComposerCard users={users} departments={departments} />}
 
       <UserFormModal
-        open={addUserOpen}
-        onClose={() => setAddUserOpen(false)}
-        onSubmit={handleAddUser}
+        open={userModalOpen}
+        onClose={() => setUserModalOpen(false)}
+        onSubmit={handleSubmitUser}
         departments={departments}
-        submitting={addingUser}
+        user={editingUser}
+        submitting={savingUser}
       />
       <DepartmentFormModal
-        open={addDeptOpen}
-        onClose={() => setAddDeptOpen(false)}
-        onSubmit={handleAddDepartment}
-        submitting={addingDept}
+        open={deptModalOpen}
+        onClose={() => setDeptModalOpen(false)}
+        onSubmit={handleSubmitDepartment}
+        department={editingDept}
+        submitting={savingDept}
+      />
+      <CategoryFormModal
+        open={categoryModalOpen}
+        onClose={() => setCategoryModalOpen(false)}
+        onSubmit={handleSubmitCategory}
+        category={editingCategory}
+        submitting={savingCategory}
       />
     </div>
   )

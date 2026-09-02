@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { getTasks, createTasks } from '../../services/tasks'
+import { getTasks, createTasks, updateTask, deleteTask } from '../../services/tasks'
 import { getUsers } from '../../services/users'
 import { getDepartments } from '../../services/departments'
 import { getCategories } from '../../services/categories'
@@ -11,15 +11,16 @@ import Button from '../../components/Button'
 import TaskFilters from '../../components/tasks/TaskFilters'
 import TaskOverviewTable from '../../components/tasks/TaskOverviewTable'
 import TaskFormModal from '../../components/tasks/TaskFormModal'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import LoadingState from '../../components/LoadingState'
 import ErrorState from '../../components/ErrorState'
 
 // prd.md §13 / phases.md Phase 5 — combinable org-wide task filters,
-// answering "what happened across the organisation in period X". The task
-// list itself stays read-only here (no status actions — same reasoning as
-// the dashboard's task overview) but Admin can add a new one for any staff
-// member via the modal below (staffOptions prop), unlike a staff member's
-// own dashboard where there's nobody else to assign to.
+// answering "what happened across the organisation in period X". Admin can
+// add a new task for any staff member (staffOptions prop) and, per rules.md
+// §14's full Super Admin authority, edit or delete any staff member's task
+// here too — the backend already allowed both (taskService.js's
+// isOwner || isAdmin), this just exposes it.
 export default function TasksPage() {
   const [filters, setFilters] = useState(defaultTaskFilters)
   const [tasks, setTasks] = useState([])
@@ -29,7 +30,10 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingTask, setDeletingTask] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const { showToast } = useToast()
 
   const loadReferenceData = useCallback(async () => {
@@ -74,17 +78,49 @@ export default function TasksPage() {
     [categories],
   )
 
-  async function handleAddTask(data) {
+  function openAddModal() {
+    setEditingTask(null)
+    setModalOpen(true)
+  }
+
+  function openEditModal(task) {
+    setEditingTask(task)
+    setModalOpen(true)
+  }
+
+  async function handleFormSubmit(data) {
     setSubmitting(true)
     try {
-      // TaskFormModal's creating flow always hands back an array now (its
-      // multi-row "Add another task") — one entry even for a single task.
-      await createTasks(data)
-      showToast(data.length > 1 ? `${data.length} tasks added.` : 'Task added.')
+      if (editingTask) {
+        await updateTask(editingTask.taskId, data)
+        showToast('Task updated.')
+      } else {
+        // TaskFormModal's creating flow always hands back an array now
+        // (its multi-row "Add another task") — one entry even for a
+        // single task.
+        await createTasks(data)
+        showToast(data.length > 1 ? `${data.length} tasks added.` : 'Task added.')
+      }
       setModalOpen(false)
+      setEditingTask(null)
       await loadTasks(filters)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deletingTask) return
+    setDeleting(true)
+    try {
+      await deleteTask(deletingTask.taskId)
+      showToast('Task deleted.')
+      setDeletingTask(null)
+      await loadTasks(filters)
+    } catch (err) {
+      setError(err.message || 'Could not delete the task. Please try again.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -95,7 +131,7 @@ export default function TasksPage() {
           <h1 className="text-headline-lg font-headline text-on-surface">Tasks</h1>
           <p className="text-body-md text-on-surface-variant">Browse and filter tasks across the organisation.</p>
         </div>
-        <Button onClick={() => setModalOpen(true)}>
+        <Button onClick={openAddModal}>
           <Plus className="size-4" aria-hidden="true" />
           Add Task
         </Button>
@@ -114,16 +150,34 @@ export default function TasksPage() {
       ) : error ? (
         <ErrorState description={error} onRetry={() => loadTasks(filters)} />
       ) : (
-        <TaskOverviewTable tasks={tasks} staffById={staffById} categoriesById={categoriesById} />
+        <TaskOverviewTable
+          tasks={tasks}
+          staffById={staffById}
+          categoriesById={categoriesById}
+          onEdit={openEditModal}
+          onDelete={setDeletingTask}
+        />
       )}
 
       <TaskFormModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSubmit={handleAddTask}
+        onSubmit={handleFormSubmit}
         categories={categories}
+        task={editingTask}
         submitting={submitting}
         staffOptions={assignableStaff}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deletingTask)}
+        onClose={() => setDeletingTask(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete this task?"
+        description={deletingTask ? `"${deletingTask.title}" will be removed.` : undefined}
+        confirmLabel="Delete"
+        busy={deleting}
+        danger
       />
     </div>
   )

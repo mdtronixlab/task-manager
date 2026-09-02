@@ -10,31 +10,50 @@ const ROLE_OPTIONS = [
   { value: ROLES.SUPER_ADMIN, label: 'Super Admin' },
 ]
 
+const STATUS_OPTIONS = [
+  { value: 'true', label: 'Active' },
+  { value: 'false', label: 'Inactive' },
+]
+
 function emptyForm() {
-  return { name: '', email: '', role: ROLES.STAFF, departmentId: '', designation: '' }
+  return { name: '', email: '', role: ROLES.STAFF, departmentId: '', designation: '', active: true }
+}
+
+function formFromUser(user) {
+  return {
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    departmentId: user.departmentId || '',
+    designation: user.designation || '',
+    active: user.active,
+  }
 }
 
 /**
- * Add-user form (prd.md §4.1 "Add staff"). Google sign-in is the only auth
- * method (rules.md §11) — this pre-authorizes an email to sign in, it
- * doesn't set a password. Whatever name is entered is just a placeholder;
- * the real Google profile name/avatar overwrite it on first login
- * (apps/api/src/middleware/auth.js).
+ * Add/Edit user form (prd.md §4.1 "Add/manage staff"). Google sign-in is
+ * the only auth method (rules.md §11) — there's no password. Whatever name
+ * is entered on *add* is just a placeholder; the real Google profile name/
+ * avatar overwrite it on first login (apps/api/src/middleware/auth.js).
+ * Email is the sign-in identity, so it's fixed once created — not
+ * editable, and updateUser doesn't accept it.
  *
  * @param {{
  *   open: boolean, onClose: () => void, onSubmit: (data: object) => Promise<void>,
- *   departments: {departmentId: string, name: string}[], submitting?: boolean,
- * }} props
+ *   departments: {departmentId: string, name: string}[], user?: object|null, submitting?: boolean,
+ * }} props `user` present = editing (adds Active, drops the create-only
+ *   description); absent/null = creating.
  */
-export default function UserFormModal({ open, onClose, onSubmit, departments, submitting }) {
+export default function UserFormModal({ open, onClose, onSubmit, departments, user, submitting }) {
+  const isEditing = Boolean(user)
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!open) return
-    setForm(emptyForm())
+    setForm(user ? formFromUser(user) : emptyForm())
     setError(null)
-  }, [open])
+  }, [open, user])
 
   function updateField(field) {
     return (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }))
@@ -42,21 +61,26 @@ export default function UserFormModal({ open, onClose, onSubmit, departments, su
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (!form.name.trim() || !form.email.trim()) {
+    if (!form.name.trim() || (!isEditing && !form.email.trim())) {
       setError('Name and email are required.')
       return
     }
     setError(null)
     try {
-      await onSubmit({
+      const payload = {
         name: form.name.trim(),
-        email: form.email.trim(),
         role: form.role,
         departmentId: form.departmentId || null,
         designation: form.designation.trim() || null,
-      })
+      }
+      if (isEditing) {
+        payload.active = form.active === true || form.active === 'true'
+      } else {
+        payload.email = form.email.trim()
+      }
+      await onSubmit(payload)
     } catch (err) {
-      setError(err.message || 'Could not add the user. Please try again.')
+      setError(err.message || `Could not ${isEditing ? 'update' : 'add'} the user. Please try again.`)
     }
   }
 
@@ -64,15 +88,15 @@ export default function UserFormModal({ open, onClose, onSubmit, departments, su
     <Modal
       open={open}
       onClose={onClose}
-      title="Add user"
-      description="They'll sign in with this exact Google email — there's no password to set."
+      title={isEditing ? 'Edit user' : 'Add user'}
+      description={isEditing ? undefined : "They'll sign in with this exact Google email — there's no password to set."}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit" form="user-form" loading={submitting} loadingText="Adding…">
-            Add user
+          <Button type="submit" form="user-form" loading={submitting} loadingText="Saving…">
+            {isEditing ? 'Save changes' : 'Add user'}
           </Button>
         </>
       }
@@ -95,6 +119,8 @@ export default function UserFormModal({ open, onClose, onSubmit, departments, su
           onChange={updateField('email')}
           maxLength={200}
           placeholder="name@company.com"
+          disabled={isEditing}
+          hint={isEditing ? "Sign-in identity — can't be changed here." : undefined}
         />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select label="Role" value={form.role} onChange={updateField('role')} options={ROLE_OPTIONS} />
@@ -115,6 +141,15 @@ export default function UserFormModal({ open, onClose, onSubmit, departments, su
           maxLength={100}
           placeholder="e.g. Developer (optional)"
         />
+        {isEditing && (
+          <Select
+            label="Status"
+            value={String(form.active)}
+            onChange={updateField('active')}
+            options={STATUS_OPTIONS}
+            hint="An inactive user can't sign in and stops receiving reminders."
+          />
+        )}
         {error && (
           <p role="alert" className="text-body-sm text-error">
             {error}

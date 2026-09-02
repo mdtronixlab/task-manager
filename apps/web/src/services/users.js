@@ -11,3 +11,13 @@ export function getUsers() {
 export function createUser(data) {
   return api.post('/api/users', data)
 }
+
+/**
+ * @param {string} userId
+ * @param {{name?: string, role?: string, departmentId?: string|null, designation?: string|null, active?: boolean}} data
+ *   Partial — only send the fields being changed. Server blocks a Super
+ *   Admin deactivating or demoting their own account.
+ */
+export function updateUser(userId, data) {
+  return api.patch(`/api/users/${userId}`, data)
+}

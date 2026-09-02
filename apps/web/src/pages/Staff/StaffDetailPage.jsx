@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { getUsers } from '../../services/users'
-import { getTasks, createTasks } from '../../services/tasks'
+import { getTasks, createTasks, updateTask, deleteTask } from '../../services/tasks'
 import { getCategories } from '../../services/categories'
 import { defaultTaskFilters, buildTaskQueryParams } from '../../utils/taskFilters'
 import { useToast } from '../../context/ToastContext'
@@ -10,6 +10,7 @@ import Button from '../../components/Button'
 import TaskFilters from '../../components/tasks/TaskFilters'
 import TaskOverviewTable from '../../components/tasks/TaskOverviewTable'
 import TaskFormModal from '../../components/tasks/TaskFormModal'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import LoadingState from '../../components/LoadingState'
 import ErrorState from '../../components/ErrorState'
 import Badge from '../../components/Badge'
@@ -27,7 +28,10 @@ export default function StaffDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingTask, setDeletingTask] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const { showToast } = useToast()
 
   const loadReferenceData = useCallback(async () => {
@@ -70,17 +74,49 @@ export default function StaffDetailPage() {
     [staffMember],
   )
 
-  async function handleAddTask(data) {
+  function openAddModal() {
+    setEditingTask(null)
+    setModalOpen(true)
+  }
+
+  function openEditModal(task) {
+    setEditingTask(task)
+    setModalOpen(true)
+  }
+
+  async function handleFormSubmit(data) {
     setSubmitting(true)
     try {
-      // TaskFormModal's creating flow always hands back an array now (its
-      // multi-row "Add another task") — one entry even for a single task.
-      await createTasks(data)
-      showToast(data.length > 1 ? `${data.length} tasks added.` : 'Task added.')
+      if (editingTask) {
+        await updateTask(editingTask.taskId, data)
+        showToast('Task updated.')
+      } else {
+        // TaskFormModal's creating flow always hands back an array now
+        // (its multi-row "Add another task") — one entry even for a
+        // single task.
+        await createTasks(data)
+        showToast(data.length > 1 ? `${data.length} tasks added.` : 'Task added.')
+      }
       setModalOpen(false)
+      setEditingTask(null)
       await loadTasks(filters)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deletingTask) return
+    setDeleting(true)
+    try {
+      await deleteTask(deletingTask.taskId)
+      showToast('Task deleted.')
+      setDeletingTask(null)
+      await loadTasks(filters)
+    } catch (err) {
+      setError(err.message || 'Could not delete the task. Please try again.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -114,9 +150,11 @@ export default function StaffDetailPage() {
             </div>
             {/* Assigning a new task to a disabled account is rejected
                 server-side (taskService.js's createTask) — no point
-                offering the button for one. */}
+                offering the button for one. Editing/deleting their past
+                tasks stays available below regardless — deactivating
+                someone doesn't erase their history (memory.md Decision 3). */}
             {staffMember?.active && (
-              <Button onClick={() => setModalOpen(true)}>
+              <Button onClick={openAddModal}>
                 <Plus className="size-4" aria-hidden="true" />
                 Add Task
               </Button>
@@ -136,19 +174,35 @@ export default function StaffDetailPage() {
           ) : error ? (
             <ErrorState description={error} onRetry={() => loadTasks(filters)} />
           ) : (
-            <TaskOverviewTable tasks={tasks} staffById={staffById} categoriesById={categoriesById} />
-          )}
-
-          {staffMember?.active && (
-            <TaskFormModal
-              open={modalOpen}
-              onClose={() => setModalOpen(false)}
-              onSubmit={handleAddTask}
-              categories={categories}
-              submitting={submitting}
-              staffOptions={[staffMember]}
+            <TaskOverviewTable
+              tasks={tasks}
+              staffById={staffById}
+              categoriesById={categoriesById}
+              onEdit={openEditModal}
+              onDelete={setDeletingTask}
             />
           )}
+
+          <TaskFormModal
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            onSubmit={handleFormSubmit}
+            categories={categories}
+            task={editingTask}
+            submitting={submitting}
+            staffOptions={staffMember ? [staffMember] : []}
+          />
+
+          <ConfirmDialog
+            open={Boolean(deletingTask)}
+            onClose={() => setDeletingTask(null)}
+            onConfirm={handleDeleteConfirm}
+            title="Delete this task?"
+            description={deletingTask ? `"${deletingTask.title}" will be removed.` : undefined}
+            confirmLabel="Delete"
+            busy={deleting}
+            danger
+          />
         </>
       )}
     </div>

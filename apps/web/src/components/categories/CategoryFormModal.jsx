@@ -14,27 +14,28 @@ function emptyForm() {
   return { name: '', description: '', active: true }
 }
 
-function formFromDepartment(department) {
-  return { name: department.name, description: department.description || '', active: department.active }
+function formFromCategory(category) {
+  return { name: category.name, description: category.description || '', active: category.active }
 }
 
 /**
- * Add/Edit department form.
+ * Add/Edit category form — the task category picker's source (rules.md
+ * §14 Super Admin capability, previously read-only).
  * @param {{
  *   open: boolean, onClose: () => void, onSubmit: (data: object) => Promise<void>,
- *   department?: object|null, submitting?: boolean,
- * }} props `department` present = editing (adds Active); absent/null = creating.
+ *   category?: object|null, submitting?: boolean,
+ * }} props `category` present = editing (adds Active); absent/null = creating.
  */
-export default function DepartmentFormModal({ open, onClose, onSubmit, department, submitting }) {
-  const isEditing = Boolean(department)
+export default function CategoryFormModal({ open, onClose, onSubmit, category, submitting }) {
+  const isEditing = Boolean(category)
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!open) return
-    setForm(department ? formFromDepartment(department) : emptyForm())
+    setForm(category ? formFromCategory(category) : emptyForm())
     setError(null)
-  }, [open, department])
+  }, [open, category])
 
   function updateField(field) {
     return (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }))
@@ -52,7 +53,7 @@ export default function DepartmentFormModal({ open, onClose, onSubmit, departmen
       if (isEditing) payload.active = form.active === true || form.active === 'true'
       await onSubmit(payload)
     } catch (err) {
-      setError(err.message || `Could not ${isEditing ? 'update' : 'add'} the department. Please try again.`)
+      setError(err.message || `Could not ${isEditing ? 'update' : 'add'} the category. Please try again.`)
     }
   }
 
@@ -60,26 +61,26 @@ export default function DepartmentFormModal({ open, onClose, onSubmit, departmen
     <Modal
       open={open}
       onClose={onClose}
-      title={isEditing ? 'Edit department' : 'Add department'}
+      title={isEditing ? 'Edit category' : 'Add category'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit" form="department-form" loading={submitting} loadingText="Saving…">
-            {isEditing ? 'Save changes' : 'Add department'}
+          <Button type="submit" form="category-form" loading={submitting} loadingText="Saving…">
+            {isEditing ? 'Save changes' : 'Add category'}
           </Button>
         </>
       }
     >
-      <form id="department-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form id="category-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
           label="Name"
           required
           value={form.name}
           onChange={updateField('name')}
           maxLength={100}
-          placeholder="e.g. Sales"
+          placeholder="e.g. Technical"
           autoFocus
         />
         <Textarea
@@ -95,7 +96,7 @@ export default function DepartmentFormModal({ open, onClose, onSubmit, departmen
             value={String(form.active)}
             onChange={updateField('active')}
             options={STATUS_OPTIONS}
-            hint="An inactive department is hidden from pickers but stays on existing records."
+            hint="An inactive category is hidden from the Add Task picker but stays on existing tasks."
           />
         )}
         {error && (

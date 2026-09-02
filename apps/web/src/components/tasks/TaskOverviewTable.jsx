@@ -1,4 +1,4 @@
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, Pencil, Trash2 } from 'lucide-react'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../Table'
 import StatusBadge from '../StatusBadge'
 import PriorityBadge from '../PriorityBadge'
@@ -9,11 +9,19 @@ function formatTime(iso) {
 }
 
 /**
- * Read-only, org-wide task list (phases.md Phase 4: "Admin can view all
- * tasks" — no status actions here; filtering/history is Phase 5).
- * @param {{tasks: object[], staffById: Record<string,string>, categoriesById: Record<string,string>}} props
+ * Org-wide task list (phases.md Phase 4: "Admin can view all tasks";
+ * filtering/history is Phase 5). Edit/delete act on any staff member's
+ * task — the backend already allows a Super Admin to (taskService.js
+ * updateTask/deleteTask's `isOwner || isAdmin` check); this just exposes
+ * it here, same Pencil/Trash2 affordance as TaskCard's self-service view.
+ * @param {{
+ *   tasks: object[], staffById: Record<string,string>, categoriesById: Record<string,string>,
+ *   onEdit?: (task: object) => void, onDelete?: (task: object) => void,
+ * }} props Edit/delete columns are omitted entirely when the handlers aren't passed.
  */
-export default function TaskOverviewTable({ tasks, staffById, categoriesById }) {
+export default function TaskOverviewTable({ tasks, staffById, categoriesById, onEdit, onDelete }) {
+  const editable = Boolean(onEdit || onDelete)
+
   if (tasks.length === 0) {
     return (
       <EmptyState
@@ -34,6 +42,7 @@ export default function TaskOverviewTable({ tasks, staffById, categoriesById }) 
           <TableHead>Priority</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Created</TableHead>
+          {editable && <TableHead className="text-right">Actions</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -49,6 +58,32 @@ export default function TaskOverviewTable({ tasks, staffById, categoriesById }) 
               <StatusBadge status={task.status} />
             </TableCell>
             <TableCell className="text-right tabular-nums">{formatTime(task.createdAt)}</TableCell>
+            {editable && (
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-1">
+                  {onEdit && (
+                    <button
+                      type="button"
+                      onClick={() => onEdit(task)}
+                      aria-label={`Edit ${task.title}`}
+                      className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface"
+                    >
+                      <Pencil className="size-4" aria-hidden="true" />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      type="button"
+                      onClick={() => onDelete(task)}
+                      aria-label={`Delete ${task.title}`}
+                      className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-tone-error-bg hover:text-tone-error-text"
+                    >
+                      <Trash2 className="size-4" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>
