@@ -9,6 +9,7 @@ import {
   sendTestNotification,
 } from '../services/pushService.js';
 import { runTaskReminderSweep } from '../services/taskReminderService.js';
+import { runTaskCompletionReminderSweep } from '../services/taskCompletionReminderService.js';
 import { runTaskDueReminderSweep } from '../services/taskDueReminderService.js';
 
 const router = Router();
@@ -54,6 +55,17 @@ router.post('/test', async (req, res, next) => {
 router.post('/task-reminder-sweep', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
     res.json(success(await runTaskReminderSweep(), 'Task reminder sweep run.'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Manual "run it now" trigger for the 6pm "mark completed" sweep — fires
+// automatically at 18:00 org time (taskCompletionReminderService.js); this
+// lets a Super Admin verify it works without waiting.
+router.post('/task-completion-reminder-sweep', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    res.json(success(await runTaskCompletionReminderSweep(), 'Task completion reminder sweep run.'));
   } catch (err) {
     next(err);
   }

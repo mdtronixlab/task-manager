@@ -1,6 +1,7 @@
 // Web Push plumbing — permission + subscription storage, a manual test
-// send, the daily "add your task" reminder (taskReminderService.js), and
-// the per-task due-time reminder (taskDueReminderService.js). Further
+// send, the daily "add your task" reminder (taskReminderService.js), the
+// end-of-day "mark completed" reminder (taskCompletionReminderService.js),
+// and the per-task due-time reminder (taskDueReminderService.js). Further
 // automatic triggers (e.g. a BLOCKED task notifying Super Admins) can call
 // sendToUser() the same way the functions below do.
 
@@ -136,6 +137,19 @@ export async function sendTaskReminder(user) {
   return sendToUser(user.userId, {
     title: 'Add your task for today',
     body: `Hi ${user.name.split(' ')[0]}, you haven't added a task for today yet.`,
+  });
+}
+
+/**
+ * Nudges one staff member who still has an unfinished (PENDING/
+ * IN_PROGRESS) task at end of day. Called by
+ * taskCompletionReminderService's 6pm sweep — never directly from a route.
+ */
+export async function sendTaskCompletionReminder(user) {
+  ensureConfigured();
+  return sendToUser(user.userId, {
+    title: 'Wrap up your tasks',
+    body: `Hi ${user.name.split(' ')[0]}, you still have unfinished tasks for today — mark them completed once you're done.`,
   });
 }
 
