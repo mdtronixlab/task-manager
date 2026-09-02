@@ -134,3 +134,11 @@ export function unsubscribeFromPush(endpoint) {
 export function sendTestPushNotification() {
   return api.post('/api/push/test')
 }
+
+/**
+ * POST /api/push/send — Super Admin only. `target` is
+ * `{ scope: 'ALL' | 'DEPARTMENT' | 'USER', departmentId?, userId? }`.
+ */
+export function sendCustomPushNotification({ title, body, target }) {
+  return api.post('/api/push/send', { title, body, target })
+}

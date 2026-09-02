@@ -7,6 +7,7 @@ import {
   saveSubscription,
   removeSubscription,
   sendTestNotification,
+  sendCustomNotification,
 } from '../services/pushService.js';
 import { runTaskReminderSweep } from '../services/taskReminderService.js';
 import { runTaskCompletionReminderSweep } from '../services/taskCompletionReminderService.js';
@@ -44,6 +45,18 @@ router.post('/unsubscribe', async (req, res, next) => {
 router.post('/test', async (req, res, next) => {
   try {
     res.json(success(await sendTestNotification(req.user), 'Test notification sent.'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// A Super Admin's free-form broadcast — { title, body, target: { scope:
+// 'ALL'|'DEPARTMENT'|'USER', departmentId?, userId? } }. sendCustomNotification
+// validates the payload and resolves recipients itself.
+router.post('/send', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    const { title, body, target } = req.body;
+    res.json(success(await sendCustomNotification(req.user, { title, body, target }), 'Notification sent.'));
   } catch (err) {
     next(err);
   }

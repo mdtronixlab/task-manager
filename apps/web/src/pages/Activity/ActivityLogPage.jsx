@@ -40,6 +40,8 @@ function describeLog(log) {
       return `added user ${log.newValue}`
     case ACTIVITY_ACTIONS.DEPARTMENT_CREATED:
       return `added department "${log.newValue}"`
+    case ACTIVITY_ACTIONS.CUSTOM_NOTIFICATION_SENT:
+      return `sent notification "${log.newValue}"`
     default:
       return ACTIVITY_ACTION_LABELS[log.action] || log.action
   }

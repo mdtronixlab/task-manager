@@ -24,6 +24,14 @@ export const TASK_PRIORITY = {
 
 export const DEFAULT_PRIORITY = TASK_PRIORITY.MEDIUM;
 
+// Who a Super Admin's custom push notification (pushService.js
+// sendCustomNotification) goes to.
+export const NOTIFICATION_TARGET_SCOPE = {
+  ALL: 'ALL',
+  DEPARTMENT: 'DEPARTMENT',
+  USER: 'USER',
+};
+
 export const ID_PREFIX = {
   USER: 'USR',
   TASK: 'TSK',
@@ -51,6 +59,7 @@ export const ACTIVITY_ACTIONS = {
   SETTINGS_UPDATED: 'SETTINGS_UPDATED',
   USER_CREATED: 'USER_CREATED',
   DEPARTMENT_CREATED: 'DEPARTMENT_CREATED',
+  CUSTOM_NOTIFICATION_SENT: 'CUSTOM_NOTIFICATION_SENT',
 };
 
 function requiredEnv(key) {

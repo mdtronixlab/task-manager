@@ -1,16 +1,18 @@
 // Web Push plumbing — permission + subscription storage, a manual test
-// send, the daily "add your task" reminder (taskReminderService.js), the
-// end-of-day "mark completed" reminder (taskCompletionReminderService.js),
-// and the per-task due-time reminder (taskDueReminderService.js). Further
-// automatic triggers (e.g. a BLOCKED task notifying Super Admins) can call
+// send, a Super Admin's custom broadcast (sendCustomNotification), the
+// daily "add your task" reminder (taskReminderService.js), the end-of-day
+// "mark completed" reminder (taskCompletionReminderService.js), and the
+// per-task due-time reminder (taskDueReminderService.js). Further automatic
+// triggers (e.g. a BLOCKED task notifying Super Admins) can call
 // sendToUser() the same way the functions below do.
 
 import webpush from 'web-push';
 import { prisma } from '../db.js';
-import { config } from '../config.js';
+import { config, ACTIVITY_ACTIONS, NOTIFICATION_TARGET_SCOPE } from '../config.js';
 import { generatePushSubscriptionId } from '../lib/ids.js';
-import { requireString } from '../lib/validate.js';
+import { requireString, requireEnum } from '../lib/validate.js';
 import { ValidationError, AppError } from '../lib/errors.js';
+import { logActivity } from '../activityLog.js';
 
 let configured = false;
 function ensureConfigured() {
@@ -110,6 +112,71 @@ async function sendToUser(userId, payload) {
   }
 
   return { sent: results.filter((r) => r.status === 'fulfilled').length, total: subscriptions.length };
+}
+
+/**
+ * Resolves a Super Admin's chosen recipients for sendCustomNotification.
+ * `target.scope` decides which of the other fields matter — mirrors the
+ * shape apps/web's notification composer sends.
+ * @param {{scope: string, departmentId?: string, userId?: string}} target
+ * @return {Promise<Array<{userId: string}>>}
+ */
+async function resolveNotificationTargets(target) {
+  const scope = requireEnum(target?.scope, NOTIFICATION_TARGET_SCOPE, 'target.scope');
+
+  if (scope === NOTIFICATION_TARGET_SCOPE.ALL) {
+    return prisma.user.findMany({ where: { active: true }, select: { userId: true } });
+  }
+
+  if (scope === NOTIFICATION_TARGET_SCOPE.DEPARTMENT) {
+    const departmentId = requireString(target.departmentId, 'target.departmentId');
+    return prisma.user.findMany({ where: { active: true, departmentId }, select: { userId: true } });
+  }
+
+  // USER
+  const userId = requireString(target.userId, 'target.userId');
+  const user = await prisma.user.findUnique({ where: { userId }, select: { userId: true, active: true } });
+  if (!user || !user.active) {
+    throw ValidationError('Selected user was not found or is no longer active.');
+  }
+  return [user];
+}
+
+/**
+ * A Super Admin's free-form push broadcast — POST /api/push/send. Unlike
+ * the automatic reminders above, title/body are admin-authored and the
+ * recipient set is their choice (everyone, one department, or one
+ * person), so this is the one sender that validates its own payload and
+ * logs an activity entry (rules.md §26 — administrative operations are
+ * logged) rather than using a fixed message.
+ * @return {Promise<{targetCount: number, notified: number}>}
+ */
+export async function sendCustomNotification(currentUser, { title, body, target }) {
+  ensureConfigured();
+  const notifTitle = requireString(title, 'title', 120);
+  const notifBody = requireString(body, 'body', 500);
+  const recipients = await resolveNotificationTargets(target);
+
+  if (recipients.length === 0) {
+    throw ValidationError('No active users match that target — nothing was sent.');
+  }
+
+  const results = await Promise.allSettled(
+    recipients.map((u) => sendToUser(u.userId, { title: notifTitle, body: notifBody })),
+  );
+  const notified = results.filter((r) => r.status === 'fulfilled' && r.value.sent > 0).length;
+
+  await logActivity(
+    currentUser.userId,
+    null,
+    ACTIVITY_ACTIONS.CUSTOM_NOTIFICATION_SENT,
+    'title',
+    null,
+    notifTitle,
+    { targetScope: target?.scope, targetCount: recipients.length, notified },
+  );
+
+  return { targetCount: recipients.length, notified };
 }
 
 /** Manual "does this actually work" check for the current user. */

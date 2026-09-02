@@ -14,6 +14,7 @@ import LoadingState from '../../components/LoadingState'
 import ErrorState from '../../components/ErrorState'
 import UserFormModal from '../../components/users/UserFormModal'
 import DepartmentFormModal from '../../components/departments/DepartmentFormModal'
+import NotificationComposerCard from '../../components/notifications/NotificationComposerCard'
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
@@ -306,6 +307,8 @@ export default function SettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {!teamLoading && !teamError && <NotificationComposerCard users={users} departments={departments} />}
 
       <UserFormModal
         open={addUserOpen}
