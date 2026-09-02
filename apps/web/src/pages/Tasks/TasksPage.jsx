@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { getTasks, createTask } from '../../services/tasks'
+import { getTasks, createTasks } from '../../services/tasks'
 import { getUsers } from '../../services/users'
 import { getDepartments } from '../../services/departments'
 import { getCategories } from '../../services/categories'
@@ -77,8 +77,10 @@ export default function TasksPage() {
   async function handleAddTask(data) {
     setSubmitting(true)
     try {
-      await createTask(data)
-      showToast('Task added.')
+      // TaskFormModal's creating flow always hands back an array now (its
+      // multi-row "Add another task") — one entry even for a single task.
+      await createTasks(data)
+      showToast(data.length > 1 ? `${data.length} tasks added.` : 'Task added.')
       setModalOpen(false)
       await loadTasks(filters)
     } finally {

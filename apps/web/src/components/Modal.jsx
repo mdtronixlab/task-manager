@@ -58,9 +58,9 @@ export default function Modal({ open, onClose, title, description, children, foo
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className={`neu-strong relative z-10 w-full max-w-lg rounded-2xl p-6 text-on-surface focus-visible:outline-none ${closing ? 'animate-scale-out' : 'animate-scale-in'}`}
+        className={`neu-strong relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl p-6 text-on-surface focus-visible:outline-none ${closing ? 'animate-scale-out' : 'animate-scale-in'}`}
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="mb-4 flex shrink-0 items-start justify-between gap-4">
           <div>
             {title && (
               <h2 id={titleId} className="text-headline-md font-headline">
@@ -82,8 +82,12 @@ export default function Modal({ open, onClose, title, description, children, foo
             <X className="size-5" aria-hidden="true" />
           </button>
         </div>
-        <div>{children}</div>
-        {footer && <div className="mt-6 flex justify-end gap-3">{footer}</div>}
+        {/* min-h-0 lets this shrink below its content size inside the flex
+            column above — without it, a tall form (e.g. TaskFormModal's
+            multi-row Add Task) pushes the dialog past the viewport instead
+            of scrolling internally. */}
+        <div className="min-h-0 overflow-y-auto pr-1">{children}</div>
+        {footer && <div className="mt-6 flex shrink-0 justify-end gap-3">{footer}</div>}
       </div>
     </div>,
     document.body,

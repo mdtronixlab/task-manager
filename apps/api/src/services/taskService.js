@@ -83,6 +83,41 @@ export async function getTasks(currentUser, params = {}) {
   return tasks.map(shapeTask);
 }
 
+// How far back getTaskTitleSuggestions looks, and how many titles it
+// returns — staff tend to repeat the same handful of daily tasks, so this
+// is generous enough to catch that pattern without dredging up a title
+// used once, months ago, that's no longer relevant.
+const SUGGESTION_LOOKBACK_DAYS = 90;
+const MAX_SUGGESTIONS = 20;
+
+/**
+ * Distinct past task titles for one user, most-frequently-used first —
+ * powers the "Add task" form's title autocomplete (prd.md-adjacent: staff
+ * re-enter the same recurring tasks daily). Frequency over recency because
+ * a task done every day for months should outrank one added twice last week.
+ * @param {object} currentUser
+ * @param {{userId?: string}} params `userId` — a Super Admin asking for a
+ *   specific staff member's suggestions (e.g. assigning them a task from
+ *   TasksPage/StaffDetailPage) rather than their own. Ignored for a STAFF
+ *   caller, same ownership rule as getTasks.
+ * @return {Promise<string[]>}
+ */
+export async function getTaskTitleSuggestions(currentUser, params = {}) {
+  const isAdmin = currentUser.role === ROLES.SUPER_ADMIN;
+  const targetUserId = isAdmin && params.userId ? params.userId : currentUser.userId;
+  const earliest = addDays(await today(), -SUGGESTION_LOOKBACK_DAYS);
+
+  const rows = await prisma.task.groupBy({
+    by: ['title'],
+    where: { userId: targetUserId, deletedAt: null, taskDate: { gte: earliest } },
+    _count: { title: true },
+    orderBy: { _count: { title: 'desc' } },
+    take: MAX_SUGGESTIONS,
+  });
+
+  return rows.map((r) => r.title);
+}
+
 // How far back getCarryForwardCandidates looks — a generous safety net for
 // someone who skipped a few days, not an invitation to resurface a task from
 // months ago. Same reasoning as lib/time.js's MAX_ENUMERATED_DAYS: a cap,

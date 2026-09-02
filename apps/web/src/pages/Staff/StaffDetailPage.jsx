@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { getUsers } from '../../services/users'
-import { getTasks, createTask } from '../../services/tasks'
+import { getTasks, createTasks } from '../../services/tasks'
 import { getCategories } from '../../services/categories'
 import { defaultTaskFilters, buildTaskQueryParams } from '../../utils/taskFilters'
 import { useToast } from '../../context/ToastContext'
@@ -73,8 +73,10 @@ export default function StaffDetailPage() {
   async function handleAddTask(data) {
     setSubmitting(true)
     try {
-      await createTask(data)
-      showToast('Task added.')
+      // TaskFormModal's creating flow always hands back an array now (its
+      // multi-row "Add another task") — one entry even for a single task.
+      await createTasks(data)
+      showToast(data.length > 1 ? `${data.length} tasks added.` : 'Task added.')
       setModalOpen(false)
       await loadTasks(filters)
     } finally {

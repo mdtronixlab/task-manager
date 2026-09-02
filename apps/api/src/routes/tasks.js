@@ -9,6 +9,7 @@ import {
   getCarryForwardCandidates,
   carryForwardTask,
   dismissCarryForward,
+  getTaskTitleSuggestions,
 } from '../services/taskService.js';
 
 const router = Router();
@@ -28,6 +29,16 @@ router.get('/', async (req, res, next) => {
 router.get('/carry-forward-candidates', async (req, res, next) => {
   try {
     res.json(success(await getCarryForwardCandidates(req.user)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Same "ahead of :taskId-shaped routes" note as carry-forward-candidates
+// above — powers the Add Task form's title autocomplete.
+router.get('/title-suggestions', async (req, res, next) => {
+  try {
+    res.json(success(await getTaskTitleSuggestions(req.user, req.query)));
   } catch (err) {
     next(err);
   }

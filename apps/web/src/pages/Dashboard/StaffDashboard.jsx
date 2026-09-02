@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import {
   getTasks,
-  createTask,
+  createTasks,
   updateTask,
   deleteTask,
   getCarryForwardCandidates,
@@ -117,8 +117,10 @@ export default function StaffDashboard() {
         await updateTask(editingTask.taskId, data);
         showToast("Task updated.");
       } else {
-        await createTask(data);
-        showToast("Task added.");
+        // Creating always hands back an array now (TaskFormModal's
+        // multi-row "Add another task") — one entry even for a single task.
+        await createTasks(data);
+        showToast(data.length > 1 ? `${data.length} tasks added.` : "Task added.");
       }
       setModalOpen(false);
       setEditingTask(null);

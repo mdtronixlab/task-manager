@@ -15,6 +15,31 @@ export function createTask(data) {
   return api.post('/api/tasks', data)
 }
 
+/**
+ * Creates several tasks at once (TaskFormModal's multi-row Add Task) —
+ * there's no bulk endpoint, so this is just `createTask` fired in
+ * parallel. Not atomic: if one rejects, whichever others already landed
+ * stay created — acceptable for this scale (a handful of rows a staff
+ * member is entering themselves, not an untrusted batch import).
+ * @param {object[]} rows
+ */
+export function createTasks(rows) {
+  return Promise.all(rows.map((row) => createTask(row)))
+}
+
+/**
+ * Distinct past task titles for the current user (or, for a Super Admin,
+ * the staff member named by `userId`), most-frequent first — powers the
+ * Add Task form's title autocomplete.
+ * @param {{userId?: string}} params
+ */
+export function getTaskTitleSuggestions(params = {}) {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== ''),
+  ).toString()
+  return api.get(`/api/tasks/title-suggestions${query ? `?${query}` : ''}`)
+}
+
 /** @param {string} taskId @param {object} data Partial task fields to update. */
 export function updateTask(taskId, data) {
   return api.patch(`/api/tasks/${taskId}`, data)
