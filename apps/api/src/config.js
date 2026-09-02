@@ -73,5 +73,5 @@ export const config = {
   // route is actually called, so a server without them still runs fine.
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY || null,
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || null,
-  vapidSubject: process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
+  vapidSubject: process.env.VAPID_SUBJECT || 'mailto:mdtronix.lab@gmail.com',
 };

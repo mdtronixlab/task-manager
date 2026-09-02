@@ -176,3 +176,35 @@ The first time the workflow runs, its GHCR packages are created **private**
 by default (GITHUB_TOKEN can't flip that itself) — go to the package's
 Settings on GitHub and change visibility to Public once, or the compose
 paste above will fail to pull.
+
+### Push notifications in production
+
+Web Push (`apps/api/src/services/pushService.js` — task reminders and
+due-time nudges) is optional: the API runs fine with `VAPID_PUBLIC_KEY`/
+`VAPID_PRIVATE_KEY` unset, it just skips sending. To turn it on for a real
+deployment:
+
+1. Generate a **dedicated production key pair** — don't reuse whatever's in
+   a local `apps/api/.env` from development:
+   ```bash
+   node -e "console.log(require('web-push').generateVAPIDKeys())"
+   ```
+2. Set `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` on the actual host, never in a
+   committed file: for the SSH/`docker-compose.yml` flow that's the
+   server's own `apps/api/.env` (already gitignored); for the CasaOS
+   paste-YAML flow, CasaOS's own environment-variable editor at install
+   time (`docker-compose.casaos.yml`'s `x-casaos.envs` block labels them).
+   The private key is a secret exactly like `service-account.json` — it
+   must never land in git or a public image.
+3. `VAPID_SUBJECT` (a `mailto:` or `https:` contact push services can reach
+   about this app's traffic) already defaults to a real address in both
+   `.env.example` and `docker-compose.casaos.yml`; override it if that
+   contact ever changes.
+4. Push requires HTTPS (browsers exempt only `localhost`) — covered
+   already since production is served at `https://tasker.mdtronix.in`.
+
+No code change is needed beyond this — subscribe/unsubscribe routes, the
+service worker, and the 8am/8:30/9am + due-time reminder schedulers
+(`taskReminderService.js`/`taskDueReminderService.js`, started
+unconditionally in `server.js`) are already wired end-to-end and just start
+sending the moment both keys are present.

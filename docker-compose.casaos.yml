@@ -68,7 +68,7 @@ services:
       BOOTSTRAP_ADMIN_NAME: ""
       VAPID_PUBLIC_KEY: ""
       VAPID_PRIVATE_KEY: ""
-      VAPID_SUBJECT: "mailto:admin@example.com"
+      VAPID_SUBJECT: "mailto:mdtronix.lab@gmail.com"
     # Long form (separate host/container keys) rather than a single
     # "host:container" string — CasaOS's own import parser naively splits
     # that string on the *first* colon it finds, which lands inside
