@@ -8,3 +8,7 @@ dist/
 apps/api/prisma/*.db
 apps/api/prisma/*.db-journal
 apps/api/service-account.json
+
+# Local Codex CLI config — carries an API key (rotated after 2026-09-04's
+# accidental commit in 7c5a33f; see git history), must never be tracked.
+.codex/

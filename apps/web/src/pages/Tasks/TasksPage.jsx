@@ -6,6 +6,7 @@ import { getDepartments } from '../../services/departments'
 import { getCategories } from '../../services/categories'
 import { defaultTaskFilters, buildTaskQueryParams } from '../../utils/taskFilters'
 import { ROLES } from '../../constants/roles'
+import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import Button from '../../components/Button'
 import TaskFilters from '../../components/tasks/TaskFilters'
@@ -35,6 +36,7 @@ export default function TasksPage() {
   const [deletingTask, setDeletingTask] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const { showToast } = useToast()
+  const { appUser } = useAuth()
 
   const loadReferenceData = useCallback(async () => {
     const [users, departmentData, categoryData] = await Promise.all([
@@ -42,10 +44,17 @@ export default function TasksPage() {
       getDepartments(),
       getCategories(),
     ])
-    setStaff(users.filter((u) => u.role === ROLES.STAFF))
+    // Staff filter/assign-to lists are staff-role users plus the signed-in
+    // Super Admin themselves — taskService.js's createTask already lets an
+    // admin own tasks (targetUserId defaults to the caller), this just
+    // surfaces that: without it, a Super Admin's own tasks exist in the
+    // backend but never appear in this filter or the "Assign to" picker.
+    // Other admins are deliberately excluded — createTask only allows
+    // assigning to a STAFF member or yourself.
+    setStaff(users.filter((u) => u.role === ROLES.STAFF || u.userId === appUser?.userId))
     setDepartments(departmentData)
     setCategories(categoryData)
-  }, [])
+  }, [appUser?.userId])
 
   const loadTasks = useCallback(async (currentFilters) => {
     setLoading(true)
