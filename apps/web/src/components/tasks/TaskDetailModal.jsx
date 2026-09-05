@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from 'lucide-react'
 import Modal from '../Modal'
 import Button from '../Button'
 import { TASK_STATUS, TASK_STATUS_ACTIONS, TASK_STATUS_META } from '../../constants/taskStatus'
@@ -147,27 +148,35 @@ export default function TaskDetailModal({
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>
+          {/* Icon-only, same treatment as TaskCard's inline Edit/Delete —
+              this footer can otherwise carry a status action or two
+              alongside these, and full text labels for every button here
+              were what overflowed a narrow phone width. */}
           {task && !readOnly && onDelete && (
-            <Button
-              variant="destructive"
+            <button
+              type="button"
               onClick={() => {
                 onDelete(task)
                 onClose()
               }}
+              aria-label={`Delete ${task.title}`}
+              className="rounded-md p-2 text-on-surface-variant transition-colors hover:bg-tone-error-bg hover:text-tone-error-text"
             >
-              Delete
-            </Button>
+              <Trash2 className="size-4" aria-hidden="true" />
+            </button>
           )}
           {task && !readOnly && onEdit && (
-            <Button
-              variant="secondary"
+            <button
+              type="button"
               onClick={() => {
                 onEdit(task)
                 onClose()
               }}
+              aria-label={`Edit ${task.title}`}
+              className="rounded-md p-2 text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface"
             >
-              Edit
-            </Button>
+              <Pencil className="size-4" aria-hidden="true" />
+            </button>
           )}
           {task &&
             actions.map((action) => (

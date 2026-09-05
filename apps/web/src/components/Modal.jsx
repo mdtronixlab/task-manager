@@ -94,7 +94,13 @@ export default function Modal({ open, onClose, title, description, children, foo
             to the dialog's actual failure mode: content should wrap or
             shrink, never scroll sideways. */}
         <div className="min-h-0 overflow-x-hidden overflow-y-auto pr-1">{children}</div>
-        {footer && <div className="mt-6 flex shrink-0 justify-end gap-3">{footer}</div>}
+        {/* flex-wrap: TaskDetailModal's footer alone can carry 5 buttons
+            (Close/Delete/Edit + up to 2 status actions) — on a narrow
+            phone width that row doesn't fit unwrapped, and a flex row
+            with no wrap just overflows sideways off the dialog (the same
+            "never scroll sideways" failure the content area above is
+            already guarded against) instead of dropping to a second line. */}
+        {footer && <div className="mt-6 flex shrink-0 flex-wrap justify-end gap-3">{footer}</div>}
       </div>
     </div>,
     document.body,
