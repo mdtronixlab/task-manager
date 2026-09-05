@@ -1,8 +1,10 @@
+import { CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useOwnTaskWorkflow } from '../../hooks/useOwnTaskWorkflow'
 import FloatingActionButton from '../../components/FloatingActionButton'
 import LoadingState from '../../components/LoadingState'
 import ErrorState from '../../components/ErrorState'
+import EmptyState from '../../components/EmptyState'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import TaskSummary from '../../components/dashboard/TaskSummary'
 import TaskList from '../../components/tasks/TaskList'
@@ -25,6 +27,8 @@ export default function MyTasksPage() {
   const { appUser } = useAuth()
   const {
     tasks,
+    visibleTasks,
+    allCaughtUp,
     categories,
     candidates,
     categoriesById,
@@ -82,15 +86,23 @@ export default function MyTasksPage() {
 
       <div>
         <h2 className="mb-3 text-body-lg font-headline font-semibold text-on-surface">Today&rsquo;s Tasks</h2>
-        <TaskList
-          tasks={tasks}
-          categoriesById={categoriesById}
-          busyTaskId={busyTaskId}
-          onStatusChange={handleStatusChange}
-          onEdit={openEditModal}
-          onDelete={setDeletingTask}
-          onAddTask={openAddModal}
-        />
+        {allCaughtUp ? (
+          <EmptyState
+            icon={CheckCircle2}
+            title="All done for today."
+            description="Every task you added today is completed — find it under Tasks."
+          />
+        ) : (
+          <TaskList
+            tasks={visibleTasks}
+            categoriesById={categoriesById}
+            busyTaskId={busyTaskId}
+            onStatusChange={handleStatusChange}
+            onEdit={openEditModal}
+            onDelete={setDeletingTask}
+            onAddTask={openAddModal}
+          />
+        )}
       </div>
 
       <FloatingActionButton onClick={openAddModal} label="Add task" />

@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { CheckCircle2, Plus } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useOwnTaskWorkflow } from "../../hooks/useOwnTaskWorkflow";
 import Button from "../../components/Button";
 import LoadingState from "../../components/LoadingState";
 import ErrorState from "../../components/ErrorState";
+import EmptyState from "../../components/EmptyState";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import TaskSummary from "../../components/dashboard/TaskSummary";
 import TaskList from "../../components/tasks/TaskList";
@@ -28,6 +29,8 @@ export default function StaffDashboard() {
   const navigate = useNavigate();
   const {
     tasks,
+    visibleTasks,
+    allCaughtUp,
     categories,
     candidates,
     categoriesById,
@@ -104,15 +107,23 @@ export default function StaffDashboard() {
                 </Button>
               )}
             </div>
-            <TaskList
-              tasks={tasks}
-              categoriesById={categoriesById}
-              busyTaskId={busyTaskId}
-              onStatusChange={handleStatusChange}
-              onEdit={openEditModal}
-              onDelete={setDeletingTask}
-              onAddTask={openAddModal}
-            />
+            {allCaughtUp ? (
+              <EmptyState
+                icon={CheckCircle2}
+                title="All done for today."
+                description="Every task you added today is completed — find it in History."
+              />
+            ) : (
+              <TaskList
+                tasks={visibleTasks}
+                categoriesById={categoriesById}
+                busyTaskId={busyTaskId}
+                onStatusChange={handleStatusChange}
+                onEdit={openEditModal}
+                onDelete={setDeletingTask}
+                onAddTask={openAddModal}
+              />
+            )}
           </div>
         </>
       )}

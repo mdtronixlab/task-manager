@@ -126,12 +126,20 @@ export async function getTaskTitleSuggestions(currentUser, params = {}) {
 const CARRY_FORWARD_LOOKBACK_DAYS = 14;
 
 /**
- * Past, unfinished tasks (own only — carrying forward someone else's task
- * makes no sense) that haven't already been resolved one way or the other —
- * carried forward already, or explicitly dismissed. "Resolved" is tracked
- * via ActivityLog rather than a new column: TASK_CARRIED_FORWARD /
- * TASK_CARRY_FORWARD_DISMISSED logged against the *original* taskId is what
- * excludes it here, so a task only ever gets offered once.
+ * Past, unfinished-and-not-yet-started-today tasks (own only — carrying
+ * forward someone else's task makes no sense) that haven't already been
+ * resolved one way or the other — carried forward already, or explicitly
+ * dismissed. "Resolved" is tracked via ActivityLog rather than a new
+ * column: TASK_CARRIED_FORWARD / TASK_CARRY_FORWARD_DISMISSED logged
+ * against the *original* taskId is what excludes it here, so a task only
+ * ever gets offered once.
+ *
+ * PENDING/BLOCKED only — IN_PROGRESS is deliberately excluded. Those two
+ * statuses need an explicit "do I still want this" decision (this
+ * prompt), but a past task someone's actively partway through doesn't:
+ * getTasks already surfaces it directly, live, on the frontend's "today"
+ * view alongside today's own tasks, so cloning it into a duplicate copy
+ * here would just create two rows for the same piece of work.
  * @param {object} currentUser
  * @return {Promise<object[]>} Oldest first — clears the backlog in order.
  */
@@ -144,7 +152,7 @@ export async function getCarryForwardCandidates(currentUser) {
       userId: currentUser.userId,
       deletedAt: null,
       taskDate: { gte: earliest, lt: todayStr },
-      status: { not: TASK_STATUS.COMPLETED },
+      status: { in: [TASK_STATUS.PENDING, TASK_STATUS.BLOCKED] },
       activityLogs: {
         none: {
           action: { in: ['TASK_CARRIED_FORWARD', 'TASK_CARRY_FORWARD_DISMISSED'] },

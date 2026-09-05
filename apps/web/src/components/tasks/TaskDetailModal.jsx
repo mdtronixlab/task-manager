@@ -67,8 +67,11 @@ const TONE_DOT_BG = {
  * instead of separated cards — built for scanning one task fast, not
  * admiring it, since an admin/staff member opens many of these in a row.
  *
- * `readOnly` (history views, prd.md §10 "should not be casually modified")
- * drops both, leaving a plain read-only view.
+ * `readOnly` drops both, leaving a plain read-only view — TaskOverviewTable
+ * uses this (an admin views another staff member's task there without
+ * driving its status), not StaffHistoryPage: history tasks are editable
+ * (the backend never actually restricted this to today's tasks), just
+ * without status actions (onStatusChange omitted — see TaskCard.jsx).
  *
  * `task` can go null slightly before `open` goes false (TaskList clears its
  * selected task synchronously on close) — Modal keeps this mounted a beat

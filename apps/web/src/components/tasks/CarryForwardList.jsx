@@ -13,9 +13,13 @@ function formatDate(dateStr) {
 
 /**
  * "You didn't finish these" prompt on the staff dashboard — one row per
- * unfinished task from an earlier day (apps/api/src/services/taskService.js
- * getCarryForwardCandidates), each with its own add/dismiss so the list
- * shrinks as they're resolved instead of an all-or-nothing action.
+ * not-yet-started task (PENDING/BLOCKED) from an earlier day
+ * (apps/api/src/services/taskService.js getCarryForwardCandidates), each
+ * with its own add/dismiss so the list shrinks as they're resolved instead
+ * of an all-or-nothing action. IN_PROGRESS tasks skip this prompt entirely
+ * — useOwnTaskWorkflow.js already surfaces those directly, live, in the
+ * main task list (no "do you still want this" decision needed for
+ * something already underway).
  *
  * @param {{
  *   tasks: object[], categoriesById: Record<string, string>, busyTaskId?: string|null,

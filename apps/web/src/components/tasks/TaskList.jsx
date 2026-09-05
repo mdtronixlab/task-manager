@@ -10,10 +10,17 @@ import TaskDetailModal from './TaskDetailModal'
  *   tasks: object[], categoriesById: Record<string, string>, busyTaskId?: string|null,
  *   onStatusChange?: (taskId: string, nextStatus: string) => void,
  *   onEdit?: (task: object) => void, onDelete?: (task: object) => void,
- *   onAddTask?: () => void, readOnly?: boolean,
+ *   onAddTask?: () => void, readOnly?: boolean, showDate?: boolean,
  * }} props Owns the "manage task" detail modal (TaskDetailModal) — opened by
  *   tapping any TaskCard — so every TaskList consumer (StaffDashboard,
- *   StaffHistoryPage) gets it for free without wiring its own state.
+ *   MyTasksPage, StaffHistoryPage) gets it for free without wiring its own
+ *   state. `showDate` — see TaskCard.jsx — is independent of `readOnly`,
+ *   for an editable-but-multi-day list (StaffHistoryPage); `readOnly` alone
+ *   still shows the date too. The empty state keys off whether `onAddTask`
+ *   was passed rather than `readOnly` directly — StaffHistoryPage doesn't
+ *   support adding a task from here either way (that's the dashboard's
+ *   job), so the "nothing matches these filters" copy is what actually
+ *   distinguishes it, not whether editing happens to be allowed.
  */
 export default function TaskList({
   tasks,
@@ -24,6 +31,7 @@ export default function TaskList({
   onDelete,
   onAddTask,
   readOnly = false,
+  showDate = false,
 }) {
   const [detailTask, setDetailTask] = useState(null)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -39,18 +47,18 @@ export default function TaskList({
   return (
     <>
       {tasks.length === 0 ? (
-        readOnly ? (
-          <EmptyState
-            icon={ClipboardList}
-            title="No tasks found."
-            description="Nothing matches this period and these filters."
-          />
-        ) : (
+        onAddTask ? (
           <EmptyState
             icon={ClipboardList}
             title="No tasks for today."
             description="Plan your work by adding your first task."
             action={<Button onClick={onAddTask}>+ Add Task</Button>}
+          />
+        ) : (
+          <EmptyState
+            icon={ClipboardList}
+            title="No tasks found."
+            description="Nothing matches this period and these filters."
           />
         )
       ) : (
@@ -66,6 +74,7 @@ export default function TaskList({
               onDelete={onDelete}
               onView={openDetail}
               readOnly={readOnly}
+              showDate={showDate}
             />
           ))}
         </div>

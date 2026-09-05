@@ -32,11 +32,22 @@ function formatDate(dateStr) {
  *   task: object, categoryName?: string, busy?: boolean,
  *   onStatusChange?: (taskId: string, nextStatus: string) => void,
  *   onEdit?: (task: object) => void, onDelete?: (task: object) => void,
- *   onView?: (task: object) => void, readOnly?: boolean,
- * }} props `readOnly` drops the edit/delete buttons and status actions and
- *   shows the task's date — for history views (prd.md §10: "Historical tasks
- *   may be viewed but should not be casually modified"), where cards span
- *   multiple days so the date can't stay implicit like it can on "today."
+ *   onView?: (task: object) => void, readOnly?: boolean, showDate?: boolean,
+ * }} props `readOnly` drops the edit/delete buttons and status actions
+ *   entirely, for a genuinely view-only list. `showDate` is independent of
+ *   that — StaffHistoryPage is editable (rules.md §25-adjacent: the backend
+ *   never actually restricted editing to today's tasks, only this UI did)
+ *   but still spans multiple days, so its cards need the date shown same as
+ *   a read-only history view would; `readOnly` alone sets `showDate` true
+ *   too, so a future genuinely-read-only multi-day list doesn't need both.
+ *   `task.isCarriedOver` (useOwnTaskWorkflow.js) also forces the date on,
+ *   card by card, on an otherwise same-day list — an in-progress task from
+ *   an earlier day mixed in among today's own still needs to say which day
+ *   it's actually from.
+ *   Status actions additionally need `onStatusChange` actually passed —
+ *   StaffHistoryPage omits it (Start/Complete/Block don't map cleanly onto
+ *   a task from a past day), and without this guard they'd render anyway
+ *   and throw on click instead of just not appearing.
  *   `onDelete` is optional even outside `readOnly` — omit it to show edit
  *   only. `onView` opens the full "manage task" detail modal (TaskDetailModal,
  *   via TaskList) on a click anywhere on the card that isn't the edit/delete
@@ -52,8 +63,9 @@ export default function TaskCard({
   onDelete,
   onView,
   readOnly = false,
+  showDate = false,
 }) {
-  const actions = readOnly ? [] : TASK_STATUS_ACTIONS[task.status] || []
+  const actions = !readOnly && onStatusChange ? TASK_STATUS_ACTIONS[task.status] || [] : []
 
   return (
     <Card
@@ -130,7 +142,7 @@ export default function TaskCard({
       </div>
 
       <p className="text-body-sm text-on-surface-variant">
-        {readOnly && <>{formatDate(task.taskDate)} · </>}
+        {(readOnly || showDate || task.isCarriedOver) && <>{formatDate(task.taskDate)} · </>}
         Created {formatTime(task.createdAt)}
         {task.dueTime && <> · Due {formatDueTime(task.dueTime)}</>}
         {task.status === TASK_STATUS.COMPLETED && task.completedAt && (
