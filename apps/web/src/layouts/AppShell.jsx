@@ -5,6 +5,7 @@ import { useAnimationReplay } from '../hooks/useAnimationReplay'
 import Logo from '../components/Logo'
 import ProfileMenu from '../components/ProfileMenu'
 import ThemeToggle from '../components/ThemeToggle'
+import PushNotificationBanner from '../components/PushNotificationBanner'
 
 // Desktop sidebar link: icon + label side by side. Active state is a
 // tinted fill (primary-container bg + on-primary-container text/icon) —
@@ -140,6 +141,7 @@ export default function AppShell({ navLinks, maxWidthClassName = 'max-w-5xl', br
             sm and up neither mobile bar exists, so the normal py-8 spacing
             is enough. */}
         <main ref={mainRef} className={`mx-auto ${maxWidthClassName} px-6 pb-24 pt-8 sm:pb-8 sm:pt-8 animate-fade-in-up`}>
+          <PushNotificationBanner />
           {children ?? <Outlet />}
         </main>
       </div>

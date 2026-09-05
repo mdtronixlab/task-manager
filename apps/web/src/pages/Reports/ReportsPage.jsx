@@ -5,7 +5,6 @@ import { getUsers } from '../../services/users'
 import { getDepartments } from '../../services/departments'
 import { defaultTaskFilters } from '../../utils/taskFilters'
 import { ROLES } from '../../constants/roles'
-import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import ReportFilters from '../../components/reports/ReportFilters'
 import CompletionTrendChart from '../../components/reports/CompletionTrendChart'
@@ -40,26 +39,24 @@ export default function ReportsPage() {
   const [error, setError] = useState(null)
   const [exporting, setExporting] = useState(false)
   const { showToast } = useToast()
-  const { appUser } = useAuth()
 
   const loadReferenceData = useCallback(async () => {
     const [users, departmentData] = await Promise.all([getUsers(), getDepartments()])
-    // Same reasoning as TasksPage.jsx — include the signed-in user so their
-    // own tasks (which do count toward org totals, per reportService.js)
-    // can be selected in the Staff filter, but only when they're a normal
-    // Admin: a Super Admin has no operational tasks of their own (see
-    // TasksPage.jsx/MyTasksPage.jsx), so isn't offered here either. Note
-    // this filters the org summary/export/trend to their tasks only; the
-    // Staff Report table below stays a staff-only roster either way
+    // Every Staff AND Admin user (not just the signed-in one) can be
+    // selected in the Staff filter — an Admin has their own operational
+    // tasks now (TasksPage.jsx/MyTasksPage.jsx), and those count toward
+    // org totals same as any staff member's (reportService.js's task
+    // query filters by userId regardless of role), so a Super Admin
+    // reviewing reports should be able to pick any of them, not just
+    // themselves. Super Admin is deliberately excluded either way — no
+    // operational tasks of their own to report on. Note this filters the
+    // org summary/export/trend to that one person's tasks only; the Staff
+    // Report table below stays a staff-only roster regardless
     // (reportService.js's buildOrgAndStaffSummary deliberately gives
     // non-staff no row there).
-    setStaff(
-      users.filter(
-        (u) => u.role === ROLES.STAFF || (u.userId === appUser?.userId && appUser?.role === ROLES.ADMIN),
-      ),
-    )
+    setStaff(users.filter((u) => u.role === ROLES.STAFF || u.role === ROLES.ADMIN))
     setDepartments(departmentData)
-  }, [appUser?.userId, appUser?.role])
+  }, [])
 
   const loadReport = useCallback(async (currentFilters) => {
     setLoading(true)
