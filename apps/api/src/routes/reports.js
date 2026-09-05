@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import ExcelJS from 'exceljs';
-import { ROLES } from '../config.js';
+import { ADMIN_ROLES } from '../config.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { success } from '../lib/response.js';
 import { getDailyReport, getReport, getCompletionTrend, getTaskExportRows } from '../services/reportService.js';
@@ -8,7 +8,8 @@ import { getDailyReport, getReport, getCompletionTrend, getTaskExportRows } from
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole(ROLES.SUPER_ADMIN));
+// Org-wide reporting — Admin and Super Admin share this authority (config.js's ADMIN_ROLES).
+router.use(requireRole(ADMIN_ROLES));
 
 router.get('/daily', async (req, res, next) => {
   try {

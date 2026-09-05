@@ -1,18 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
-import {
-  getTasks,
-  createTasks,
-  updateTask,
-  deleteTask,
-  getCarryForwardCandidates,
-  carryForwardTask,
-  dismissCarryForward,
-} from "../../services/tasks";
-import { getCategories } from "../../services/categories";
-import { TASK_STATUS, TASK_STATUS_META } from "../../constants/taskStatus";
-import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
+import { useOwnTaskWorkflow } from "../../hooks/useOwnTaskWorkflow";
 import Button from "../../components/Button";
 import LoadingState from "../../components/LoadingState";
 import ErrorState from "../../components/ErrorState";
@@ -22,64 +12,45 @@ import TaskList from "../../components/tasks/TaskList";
 import TaskFormModal from "../../components/tasks/TaskFormModal";
 import CarryForwardList from "../../components/tasks/CarryForwardList";
 
-function summarize(tasks) {
-  const total = tasks.length;
-  const completed = tasks.filter(
-    (t) => t.status === TASK_STATUS.COMPLETED,
-  ).length;
-  const pending = tasks.filter((t) => t.status === TASK_STATUS.PENDING).length;
-  const inProgress = tasks.filter(
-    (t) => t.status === TASK_STATUS.IN_PROGRESS,
-  ).length;
-  const blocked = tasks.filter((t) => t.status === TASK_STATUS.BLOCKED).length;
-  const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
-  return { total, completed, pending, inProgress, blocked, completionRate };
-}
-
 // prd.md §6/§11 — the staff daily workflow: today's summary, add task,
 // today's task list, status actions. Task date is never picked by the user
 // — the backend resolves "today" itself (memory.md Decision 1). No greeting
 // hero banner — the "Add Task" trigger lives on the Today's Tasks header
 // instead (plus StaffLayout's mobile "+" quick-add, and TaskList's own
-// empty-state button when there's nothing yet).
+// empty-state button when there's nothing yet). The actual task workflow
+// (data, modal/busy state, every handler) lives in useOwnTaskWorkflow,
+// shared with MyTasksPage (an Admin's equivalent) — this file only owns the
+// bits specific to being the staff dashboard: the layout below and the
+// quickAddTask effect.
 export default function StaffDashboard() {
-  const { showToast } = useToast();
+  const { appUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [candidates, setCandidates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [busyTaskId, setBusyTaskId] = useState(null);
-  const [deletingTask, setDeletingTask] = useState(null);
-  const [deleting, setDeleting] = useState(false);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [taskData, categoryData, candidateData] = await Promise.all([
-        getTasks({ date: "today" }),
-        getCategories(),
-        getCarryForwardCandidates(),
-      ]);
-      setTasks(taskData);
-      setCategories(categoryData);
-      setCandidates(candidateData);
-    } catch (err) {
-      setError(err.message || "Could not load your tasks. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const {
+    tasks,
+    categories,
+    candidates,
+    categoriesById,
+    summary,
+    loading,
+    error,
+    modalOpen,
+    editingTask,
+    submitting,
+    busyTaskId,
+    deletingTask,
+    deleting,
+    loadData,
+    openAddModal,
+    openEditModal,
+    closeModal,
+    setDeletingTask,
+    handleFormSubmit,
+    handleDeleteConfirm,
+    handleStatusChange,
+    handleCarryForward,
+    handleDismissCarryForward,
+  } = useOwnTaskWorkflow(appUser.userId);
 
   // StaffLayout's mobile "+" quick-add button (AppShell's quickAction)
   // always routes here since this is the only page with the add-task
@@ -93,102 +64,6 @@ export default function StaffDashboard() {
     navigate(location.pathname, { replace: true, state: {} });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state?.quickAddTask]);
-
-  const summary = useMemo(() => summarize(tasks), [tasks]);
-  const categoriesById = useMemo(
-    () => Object.fromEntries(categories.map((c) => [c.categoryId, c.name])),
-    [categories],
-  );
-
-  function openAddModal() {
-    setEditingTask(null);
-    setModalOpen(true);
-  }
-
-  function openEditModal(task) {
-    setEditingTask(task);
-    setModalOpen(true);
-  }
-
-  async function handleFormSubmit(data) {
-    setSubmitting(true);
-    try {
-      if (editingTask) {
-        await updateTask(editingTask.taskId, data);
-        showToast("Task updated.");
-      } else {
-        // Creating always hands back an array now (TaskFormModal's
-        // multi-row "Add another task") — one entry even for a single task.
-        await createTasks(data);
-        showToast(data.length > 1 ? `${data.length} tasks added.` : "Task added.");
-      }
-      setModalOpen(false);
-      setEditingTask(null);
-      await loadData();
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleDeleteConfirm() {
-    if (!deletingTask) return;
-    setDeleting(true);
-    try {
-      await deleteTask(deletingTask.taskId);
-      showToast("Task deleted.");
-      setDeletingTask(null);
-      await loadData();
-    } catch (err) {
-      setError(err.message || "Could not delete the task. Please try again.");
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  async function handleStatusChange(taskId, nextStatus) {
-    setBusyTaskId(taskId);
-    setError(null);
-    try {
-      await updateTask(taskId, { status: nextStatus });
-      showToast(`Marked as ${TASK_STATUS_META[nextStatus].label}.`);
-      await loadData();
-    } catch (err) {
-      setError(err.message || "Could not update the task. Please try again.");
-    } finally {
-      setBusyTaskId(null);
-    }
-  }
-
-  // busyTaskId is reused here rather than a separate state — a candidate's
-  // taskId is always from a past day, so it can never collide with an id
-  // already in `tasks` (today's), and only one of these two lists' buttons
-  // can be mid-request at a time anyway.
-  async function handleCarryForward(taskId) {
-    setBusyTaskId(taskId);
-    setError(null);
-    try {
-      await carryForwardTask(taskId);
-      showToast("Added to today.");
-      await loadData();
-    } catch (err) {
-      setError(err.message || "Could not add that task to today. Please try again.");
-    } finally {
-      setBusyTaskId(null);
-    }
-  }
-
-  async function handleDismissCarryForward(taskId) {
-    setBusyTaskId(taskId);
-    setError(null);
-    try {
-      await dismissCarryForward(taskId);
-      await loadData();
-    } catch (err) {
-      setError(err.message || "Could not dismiss that task. Please try again.");
-    } finally {
-      setBusyTaskId(null);
-    }
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -244,7 +119,7 @@ export default function StaffDashboard() {
 
       <TaskFormModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         onSubmit={handleFormSubmit}
         categories={categories}
         task={editingTask}

@@ -58,7 +58,7 @@ export default function Modal({ open, onClose, title, description, children, foo
         aria-labelledby={title ? titleId : undefined}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className={`neu-strong relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl p-6 text-on-surface focus-visible:outline-none ${closing ? 'animate-scale-out' : 'animate-scale-in'}`}
+        className={`neu-strong relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col rounded-lg p-6 text-on-surface focus-visible:outline-none ${closing ? 'animate-scale-out' : 'animate-scale-in'}`}
       >
         <div className="mb-4 flex shrink-0 items-start justify-between gap-4">
           <div>
@@ -85,8 +85,15 @@ export default function Modal({ open, onClose, title, description, children, foo
         {/* min-h-0 lets this shrink below its content size inside the flex
             column above — without it, a tall form (e.g. TaskFormModal's
             multi-row Add Task) pushes the dialog past the viewport instead
-            of scrolling internally. */}
-        <div className="min-h-0 overflow-y-auto pr-1">{children}</div>
+            of scrolling internally. overflow-x-hidden is deliberate, not
+            redundant: per the CSS overflow spec, setting overflow-y to
+            anything but `visible` computes overflow-x as `auto` too when
+            it's left at its default — any content even a few px too wide
+            (a long label, an unwrapped grid column) silently grows a
+            horizontal scrollbar instead of wrapping. This forces it back
+            to the dialog's actual failure mode: content should wrap or
+            shrink, never scroll sideways. */}
+        <div className="min-h-0 overflow-x-hidden overflow-y-auto pr-1">{children}</div>
         {footer && <div className="mt-6 flex shrink-0 justify-end gap-3">{footer}</div>}
       </div>
     </div>,

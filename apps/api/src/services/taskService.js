@@ -5,12 +5,13 @@
 // always decides based on the authenticated identity, never the request body.
 
 import { prisma } from '../db.js';
-import { ROLES, TASK_STATUS, TASK_PRIORITY, DEFAULT_PRIORITY } from '../config.js';
+import { ROLES, TASK_STATUS, TASK_PRIORITY, DEFAULT_PRIORITY, isElevatedRole } from '../config.js';
 import { generateTaskId } from '../lib/ids.js';
 import { today, resolveDateRange, addDays } from '../lib/time.js';
 import { requireString, requireEnum, requireDueTimeOrNull } from '../lib/validate.js';
 import { AppError, NotFound, Forbidden, ValidationError } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
+import { sendTaskAssignedNotification } from './pushService.js';
 
 // Allowed status transitions — prd.md §8, rules.md §22.
 const TASK_STATUS_TRANSITIONS = {
@@ -46,7 +47,7 @@ function shapeTask(t) {
  *   STAFF requests are always forced to their own userId regardless of params.userId.
  */
 export async function getTasks(currentUser, params = {}) {
-  const isAdmin = currentUser.role === ROLES.SUPER_ADMIN;
+  const isAdmin = isElevatedRole(currentUser.role);
   const targetUserId = isAdmin ? params.userId : currentUser.userId;
 
   const where = {
@@ -103,7 +104,7 @@ const MAX_SUGGESTIONS = 20;
  * @return {Promise<string[]>}
  */
 export async function getTaskTitleSuggestions(currentUser, params = {}) {
-  const isAdmin = currentUser.role === ROLES.SUPER_ADMIN;
+  const isAdmin = isElevatedRole(currentUser.role);
   const targetUserId = isAdmin && params.userId ? params.userId : currentUser.userId;
   const earliest = addDays(await today(), -SUGGESTION_LOOKBACK_DAYS);
 
@@ -250,10 +251,11 @@ export async function dismissCarryForward(currentUser, taskId) {
 /**
  * @param {object} currentUser
  * @param {object} data {title, description, priority, categoryId, userId?}
- *   `userId` — a Super Admin assigning this task to a staff member instead
- *   of themselves. Silently ignored for a STAFF caller (rules.md §13: never
- *   trust a userId the client supplies) — they always get their own task
- *   regardless of what's in the request body, same as getTasks already does.
+ *   `userId` — an Admin/Super Admin assigning this task to a staff member
+ *   instead of themselves. Silently ignored for a STAFF caller (rules.md
+ *   §13: never trust a userId the client supplies) — they always get their
+ *   own task regardless of what's in the request body, same as getTasks
+ *   already does.
  */
 export async function createTask(currentUser, data = {}) {
   const title = requireString(data.title, 'Task title', 200);
@@ -268,10 +270,11 @@ export async function createTask(currentUser, data = {}) {
     categoryId = data.categoryId;
   }
 
-  const isAdmin = currentUser.role === ROLES.SUPER_ADMIN;
+  const isAdmin = isElevatedRole(currentUser.role);
   let targetUserId = currentUser.userId;
+  let assignee = null; // set below only when an admin assigns to someone else — powers the push notification after creation.
   if (isAdmin && data.userId && data.userId !== currentUser.userId) {
-    const assignee = await prisma.user.findUnique({ where: { userId: data.userId } });
+    assignee = await prisma.user.findUnique({ where: { userId: data.userId } });
     if (!assignee) throw ValidationError('Staff member does not exist.');
     if (assignee.role !== ROLES.STAFF) throw ValidationError('Tasks can only be assigned to staff.');
     if (!assignee.active) throw ValidationError('Cannot assign a task to a disabled account.');
@@ -301,6 +304,16 @@ export async function createTask(currentUser, data = {}) {
     ...(targetUserId !== currentUser.userId ? { assignedTo: targetUserId } : {}),
   });
 
+  if (assignee) {
+    // Best-effort — push not configured, no subscriptions, or a provider
+    // outage should never fail the task creation request itself.
+    try {
+      await sendTaskAssignedNotification(assignee, task, currentUser.name);
+    } catch (err) {
+      console.error('[taskService] task-assigned notification failed:', err);
+    }
+  }
+
   return shapeTask(task);
 }
 
@@ -316,7 +329,7 @@ export async function updateTask(currentUser, taskId, data = {}) {
   if (!task || task.deletedAt) throw NotFound('Task not found.');
 
   const isOwner = task.userId === currentUser.userId;
-  const isAdmin = currentUser.role === ROLES.SUPER_ADMIN;
+  const isAdmin = isElevatedRole(currentUser.role);
   if (!isOwner && !isAdmin) {
     throw Forbidden("You cannot modify another user's task.");
   }
@@ -407,7 +420,7 @@ export async function updateTask(currentUser, taskId, data = {}) {
  * the row, so it drops out of every normal list (getTasks/carry-forward)
  * immediately while staying in the database for administrative auditing via
  * the ActivityLog it also writes here. Same ownership rule as updateTask:
- * the task's owner or a Super Admin, nobody else.
+ * the task's owner or any admin (Admin/Super Admin), nobody else.
  * @param {object} currentUser
  * @param {string} taskId
  */
@@ -418,7 +431,7 @@ export async function deleteTask(currentUser, taskId) {
   if (!task || task.deletedAt) throw NotFound('Task not found.');
 
   const isOwner = task.userId === currentUser.userId;
-  const isAdmin = currentUser.role === ROLES.SUPER_ADMIN;
+  const isAdmin = isElevatedRole(currentUser.role);
   if (!isOwner && !isAdmin) {
     throw Forbidden("You cannot delete another user's task.");
   }

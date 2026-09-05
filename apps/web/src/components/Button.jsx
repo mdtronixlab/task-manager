@@ -4,20 +4,16 @@ import { Loader2 } from 'lucide-react'
 // Three levels per design.md §31 — do not make every button visually
 // prominent. `ghost` is a low-emphasis fourth option for icon-only /
 // toolbar-style actions, still mapped to the same semantic tokens.
-// Redesigned 2026-08-25 as neumorphic (soft UI): primary/destructive keep
-// a gradient fill (colour hierarchy still needs to read at a glance) but
-// its shadow is now a raised bump off the page rather than a glass glow;
-// secondary is a plain .neu button (same colour as the page, shape read
-// through shadow alone); ghost stays flat until hover, when it pops up
-// into a small raised .neu-sm — mirrors a physical button that only
-// shows its bevel once you reach for it.
+// Redesigned 2026-09-05 as a flat bordered system (replaces the 08-25
+// neumorphic pass): primary/destructive are solid fills (colour hierarchy
+// still needs to read at a glance) that darken slightly on hover/press
+// instead of a raised-bump shadow; secondary is a plain bordered button;
+// ghost stays borderless until hover, when it picks up a neutral fill.
 const VARIANT_CLASSES = {
-  primary:
-    'bg-gradient-to-br from-primary to-chart-series-1 text-on-primary shadow-[-4px_-4px_10px_var(--neu-light),4px_4px_10px_var(--neu-dark),0_4px_16px_-4px_var(--color-primary)] hover:brightness-110 active:shadow-[inset_-3px_-3px_7px_var(--neu-light),inset_3px_3px_7px_var(--neu-dark)]',
-  secondary: 'neu neu-interactive text-on-surface',
-  destructive:
-    'bg-gradient-to-br from-error to-tertiary-container text-on-error shadow-[-4px_-4px_10px_var(--neu-light),4px_4px_10px_var(--neu-dark),0_4px_16px_-4px_var(--color-error)] hover:brightness-110 active:shadow-[inset_-3px_-3px_7px_var(--neu-light),inset_3px_3px_7px_var(--neu-dark)]',
-  ghost: 'bg-transparent text-on-surface-variant hover:neu-sm active:neu-inset',
+  primary: 'bg-primary text-on-primary hover:brightness-95 active:brightness-90',
+  secondary: 'border border-outline-variant bg-surface text-on-surface hover:bg-surface-container',
+  destructive: 'bg-error text-on-error hover:brightness-95 active:brightness-90',
+  ghost: 'bg-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface',
 }
 
 const SIZE_CLASSES = {

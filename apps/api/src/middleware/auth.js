@@ -86,10 +86,11 @@ export async function authenticate(req, res, next) {
   }
 }
 
-/** @param {string} role e.g. ROLES.SUPER_ADMIN */
+/** @param {string|string[]} role One role (e.g. ROLES.SUPER_ADMIN), or several — e.g. config.js's ADMIN_ROLES — any of which passes. */
 export function requireRole(role) {
+  const allowed = Array.isArray(role) ? role : [role];
   return (req, res, next) => {
-    if (req.user.role !== role) return next(Forbidden());
+    if (!allowed.includes(req.user.role)) return next(Forbidden());
     next();
   };
 }

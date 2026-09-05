@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ROLES } from '../config.js';
+import { ADMIN_ROLES } from '../config.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { success } from '../lib/response.js';
 import { getActivityLogs } from '../services/activityLogService.js';
@@ -7,7 +7,8 @@ import { getActivityLogs } from '../services/activityLogService.js';
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole(ROLES.SUPER_ADMIN));
+// Org-wide activity log — Admin and Super Admin share this authority (config.js's ADMIN_ROLES).
+router.use(requireRole(ADMIN_ROLES));
 
 router.get('/', async (req, res, next) => {
   try {

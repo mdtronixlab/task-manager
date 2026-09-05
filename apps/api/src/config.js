@@ -5,8 +5,23 @@
 
 export const ROLES = {
   STAFF: 'STAFF',
+  ADMIN: 'ADMIN',
   SUPER_ADMIN: 'SUPER_ADMIN',
 };
+
+// Three-tier access (rules.md §14 extended): Staff only ever touch their
+// own tasks. Admin and Super Admin share the same org-wide task/report/
+// activity-log authority (see taskService.js's isElevatedRole and routes/
+// reports.js, routes/activityLogs.js) — Super Admin is strictly the wider
+// role, adding user management, department/category management, and
+// custom push broadcasts (routes/users.js, departments.js, categories.js,
+// push.js's /send all stay requireRole(ROLES.SUPER_ADMIN) alone).
+export const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
+
+/** True for either elevated role — the org-wide task/report/activity authority both share. */
+export function isElevatedRole(role) {
+  return ADMIN_ROLES.includes(role);
+}
 
 export const TASK_STATUS = {
   PENDING: 'PENDING',

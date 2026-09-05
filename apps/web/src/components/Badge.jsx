@@ -8,17 +8,16 @@ const TONE_CLASSES = {
 
 /**
  * Status/priority indicator. Always pairs colour with a text label
- * (design.md §6–7, rules.md §10) — never render a bare coloured dot.
+ * (design.md §6–7, rules.md §10) — the label text alone already satisfies
+ * that; a redundant leading dot (the 08-25 neumorphic pass's signature)
+ * was decorative only and dropped in the 2026-09-05 redesign in favour of
+ * a plain solid-tint chip.
  */
 export default function Badge({ tone = 'neutral', children, className = '', ...props }) {
   return (
     <span
       className={[
-        // Soft UI reads status chips as small pressed wells rather than a
-        // bordered/frosted pill — shadow-inner (Tailwind's fixed generic
-        // inset shadow, not the --neu-* pair) works here because it's
-        // layered on the tone's own flat colour, not the page surface.
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 shadow-inner',
+        'inline-flex items-center gap-1.5 rounded-sm px-2 py-1',
         'text-label-md font-label uppercase',
         TONE_CLASSES[tone],
         className,
@@ -27,7 +26,6 @@ export default function Badge({ tone = 'neutral', children, className = '', ...p
         .join(' ')}
       {...props}
     >
-      <span className="size-1.5 rounded-full bg-current" aria-hidden="true" />
       {children}
     </span>
   )

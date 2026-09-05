@@ -170,7 +170,7 @@ export default function ProfileMenu({ name, email, avatarUrl, onSignOut }) {
                     role="menuitem"
                     disabled={push.busy}
                     onClick={push.subscribed ? push.unsubscribe : push.subscribe}
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-body-sm text-on-surface transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-body-sm text-on-surface transition-colors hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {push.subscribed ? (
                       <BellOff className="size-4" aria-hidden="true" />
@@ -185,7 +185,7 @@ export default function ProfileMenu({ name, email, avatarUrl, onSignOut }) {
                       role="menuitem"
                       disabled={push.busy}
                       onClick={handleSendTest}
-                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-body-sm text-on-surface transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-body-sm text-on-surface transition-colors hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Send className="size-4" aria-hidden="true" />
                       {testSent ? 'Sent ✓' : 'Send test notification'}
@@ -214,7 +214,7 @@ export default function ProfileMenu({ name, email, avatarUrl, onSignOut }) {
                   }
                   onSignOut?.()
                 }}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-body-sm text-on-surface transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-body-sm text-on-surface transition-colors hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <LogOut className="size-4" aria-hidden="true" />
                 Sign out

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { getDailyReport } from '../../services/reports'
 import { getTasks } from '../../services/tasks'
+import { getUsers } from '../../services/users'
 import { getCategories } from '../../services/categories'
 import LoadingState from '../../components/LoadingState'
 import ErrorState from '../../components/ErrorState'
@@ -12,11 +13,14 @@ import TaskOverviewTable from '../../components/tasks/TaskOverviewTable'
 // prd.md §12 / phases.md Phase 4 — "What is happening in the organisation
 // today?" answered from one view: org KPIs, per-staff rollup, all of
 // today's tasks. Filtering/history (rules.md §18 — don't build ahead) is
-// Phase 5; this is the live snapshot only.
+// Phase 5; this is the live snapshot only. An Admin's own operational work
+// lives on its own page (MyTasksPage, /my-tasks) rather than here — this
+// stays the org-wide read-only view for both Admin and Super Admin.
 export default function AdminDashboard() {
   const { appUser } = useAuth()
   const [report, setReport] = useState(null)
   const [tasks, setTasks] = useState([])
+  const [users, setUsers] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -25,13 +29,15 @@ export default function AdminDashboard() {
     setLoading(true)
     setError(null)
     try {
-      const [reportData, taskData, categoryData] = await Promise.all([
+      const [reportData, taskData, userData, categoryData] = await Promise.all([
         getDailyReport(),
         getTasks({ date: 'today' }),
+        getUsers(),
         getCategories(),
       ])
       setReport(reportData)
       setTasks(taskData)
+      setUsers(userData)
       setCategories(categoryData)
     } catch (err) {
       setError(err.message || 'Could not load the dashboard. Please try again.')
@@ -44,10 +50,13 @@ export default function AdminDashboard() {
     loadData()
   }, [loadData])
 
-  const staffById = useMemo(
-    () => Object.fromEntries((report?.staff || []).map((s) => [s.userId, s.name])),
-    [report],
-  )
+  // From the full user roster, not report.staff — reportService.js's
+  // buildOrgAndStaffSummary hard-filters that to role: STAFF (it's meant
+  // for the Staff Overview table below), so it never has an Admin's own
+  // name. Since MyTasksPage lets an Admin self-create tasks that land in
+  // this same org-wide `tasks` list, staffById needs to resolve those too
+  // or the Staff column falls back to a raw userId for them.
+  const staffById = useMemo(() => Object.fromEntries(users.map((u) => [u.userId, u.name])), [users])
   const categoriesById = useMemo(
     () => Object.fromEntries(categories.map((c) => [c.categoryId, c.name])),
     [categories],
@@ -73,7 +82,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="neu flex flex-col gap-1 rounded-2xl px-6 py-5">
+      <div className="neu flex flex-col gap-1 rounded-lg px-6 py-5">
         <h1 className="bg-gradient-to-r from-on-surface to-on-surface-variant bg-clip-text text-headline-lg font-headline text-transparent">
           Organisation Dashboard
         </h1>

@@ -44,15 +44,22 @@ export default function ReportsPage() {
 
   const loadReferenceData = useCallback(async () => {
     const [users, departmentData] = await Promise.all([getUsers(), getDepartments()])
-    // Same reasoning as TasksPage.jsx — include the signed-in Super Admin
-    // so their own tasks (which do count toward org totals, per
-    // reportService.js) can be selected in the Staff filter. Note this
-    // filters the org summary/export/trend to their tasks only; the Staff
-    // Report table below stays a staff-only roster either way (reportService.js's
-    // buildOrgAndStaffSummary deliberately gives non-staff no row there).
-    setStaff(users.filter((u) => u.role === ROLES.STAFF || u.userId === appUser?.userId))
+    // Same reasoning as TasksPage.jsx — include the signed-in user so their
+    // own tasks (which do count toward org totals, per reportService.js)
+    // can be selected in the Staff filter, but only when they're a normal
+    // Admin: a Super Admin has no operational tasks of their own (see
+    // TasksPage.jsx/MyTasksPage.jsx), so isn't offered here either. Note
+    // this filters the org summary/export/trend to their tasks only; the
+    // Staff Report table below stays a staff-only roster either way
+    // (reportService.js's buildOrgAndStaffSummary deliberately gives
+    // non-staff no row there).
+    setStaff(
+      users.filter(
+        (u) => u.role === ROLES.STAFF || (u.userId === appUser?.userId && appUser?.role === ROLES.ADMIN),
+      ),
+    )
     setDepartments(departmentData)
-  }, [appUser?.userId])
+  }, [appUser?.userId, appUser?.role])
 
   const loadReport = useCallback(async (currentFilters) => {
     setLoading(true)

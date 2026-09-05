@@ -1,186 +1,181 @@
-@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
 @import 'tailwindcss';
 
 /* ==========================================================================
    OTM Design Tokens
-   Source of truth: documents/UI-UX Design System — Organisation Task
-   Manager.md (design.md). Concrete values seeded from the "Lumina Finance"
-   theme generated in Stitch (stitch-export/design-system/design-system.md).
+   Source of truth: the "Organisation Task Manager" redesign canvas
+   (2026-09-05, https://claude.ai/code/artifact/ea9fc102-e10e-4bc6-9892-fd84d3339650
+   — see memory.md "UI redesign direction approved"). Replaces the
+   2026-08-25 neumorphic "soft UI" pass with a clean, bordered SaaS-console
+   system: flat surfaces distinguished by a 1px border/subtle shadow
+   instead of a raised/pressed shadow pair, one indigo accent, solid-tint
+   status/priority chips.
 
-   design.md §4 calls for a light theme first with dark added later; the
-   Stitch screens were produced in dark mode. Per project decision
-   (2026-08-21, recorded in memory.md §23), BOTH palettes are wired here as
-   CSS custom properties, with dark as the current default. Switch themes at
-   runtime by setting `data-theme="light"` on <html> — no dark:/light:
-   utility variants are needed anywhere else because every component should
-   consume the semantic tokens below (bg-surface, text-on-surface, etc.)
-   rather than raw Tailwind colors.
+   The canvas itself was light-only; the dark palette below is this same
+   system's own extension of it (same tokens, same relationships), not
+   something the canvas specified directly. Dark stays the app's default
+   per the existing decision (memory.md §14, ThemeContext.jsx) — only the
+   *look* changed here, not which theme loads first.
+
+   Every component should keep consuming the semantic tokens below
+   (bg-surface, text-on-surface, etc.) rather than raw Tailwind colors, so
+   a future palette change is this file alone.
    ========================================================================== */
 
 :root {
   color-scheme: dark;
 
   /* Surfaces */
-  --color-background: #020617;
-  --color-on-background: #e1e1ef;
-  --color-surface: #0f172a;
-  --color-surface-dim: #11131c;
-  --color-surface-bright: #373943;
-  --color-surface-container-lowest: #0c0e17;
-  --color-surface-container-low: #191b25;
-  --color-surface-container: #1d1f29;
-  --color-surface-container-high: #282934;
-  --color-surface-container-highest: #32343f;
-  --color-on-surface: #e1e1ef;
-  --color-on-surface-variant: #c3c5d9;
-  --color-outline: #8d90a2;
-  --color-outline-variant: #434656;
+  --color-background: #0b0d12;
+  --color-on-background: #e4e7ec;
+  --color-surface: #14161c;
+  --color-surface-dim: #191c23;
+  --color-surface-bright: #1e212a;
+  --color-surface-container-lowest: #0b0d12;
+  --color-surface-container-low: #101319;
+  --color-surface-container: #191c23;
+  --color-surface-container-high: #22252e;
+  --color-surface-container-highest: #2c2f3a;
+  --color-on-surface: #e4e7ec;
+  --color-on-surface-variant: #9aa1b0;
+  --color-outline: #6b7280;
+  --color-outline-variant: #2a2d37;
 
-  /* Brand */
-  --color-primary: #b7c4ff;
-  --color-on-primary: #002682;
-  --color-primary-container: #0052ff;
-  --color-on-primary-container: #dfe3ff;
+  /* Brand — a solid filled button/active-nav reads fine with the same
+     vivid indigo in both themes, since it's a shape not text-on-bg. */
+  --color-primary: #4f46e5;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #262a5c;
+  --color-on-primary-container: #b4aeff;
 
-  --color-secondary: #b7c8e1;
-  --color-on-secondary: #213145;
-  --color-secondary-container: #3a4a5f;
-  --color-on-secondary-container: #a9bad3;
+  --color-secondary: #9aa1b0;
+  --color-on-secondary: #14161c;
+  --color-secondary-container: #22252e;
+  --color-on-secondary-container: #e4e7ec;
 
-  --color-tertiary: #ffb4a1;
-  --color-on-tertiary: #611300;
-  --color-tertiary-container: #bf3003;
-  --color-on-tertiary-container: #ffddd5;
+  --color-tertiary: #f0a875;
+  --color-on-tertiary: #3c1e00;
+  --color-tertiary-container: #5c3818;
+  --color-on-tertiary-container: #ffdcb8;
 
-  /* Semantic (design.md §5) */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-on-error: #690005;
-  --color-error-container: #93000a;
-  --color-on-error-container: #ffdad6;
-  --color-accent-teal: #2dd4bf;
+  /* Semantic */
+  --color-success: #3fba84;
+  --color-warning: #d99a4e;
+  --color-error: #e5484d;
+  --color-on-error: #ffffff;
+  --color-error-container: #4a1a1c;
+  --color-on-error-container: #ffb4ab;
+  --color-accent-teal: #22b8cf;
 
-  /* Status/priority badge tones (design.md §6–7): text + subtle background
-     pair per tone, so status is never colour-only (rules.md §10). */
-  --color-tone-primary-bg: rgb(183 196 255 / 16%);
-  --color-tone-primary-text: #b7c4ff;
-  --color-tone-success-bg: rgb(16 185 129 / 16%);
-  --color-tone-success-text: #34d399;
-  --color-tone-warning-bg: rgb(245 158 11 / 16%);
-  --color-tone-warning-text: #fbbf24;
-  --color-tone-error-bg: rgb(239 68 68 / 16%);
-  --color-tone-error-text: #f87171;
-  --color-tone-neutral-bg: rgb(141 144 162 / 16%);
-  --color-tone-neutral-text: #c3c5d9;
+  /* Status/priority chip tones: text + subtle background pair per tone, so
+     status is never colour-only (rules.md §10). "primary" tone = In
+     Progress specifically here — deliberately its own blue, distinct from
+     --color-primary's indigo brand accent (the redesign gives every
+     status its own hue; the brand color is reserved for actions/nav). */
+  --color-tone-primary-bg: #1c2b45;
+  --color-tone-primary-text: #7db3f5;
+  --color-tone-success-bg: #163429;
+  --color-tone-success-text: #4ade9b;
+  --color-tone-warning-bg: #3a2a12;
+  --color-tone-warning-text: #e5a344;
+  --color-tone-error-bg: #3d1917;
+  --color-tone-error-text: #f28b82;
+  --color-tone-neutral-bg: #22252e;
+  --color-tone-neutral-text: #9aa1b0;
 
-  /* Chart series (dataviz skill palette.md — validated with
-     scripts/validate_palette.js for this app's dark/light surfaces).
-     Distinct from the status tones above: a categorical chart mark needs
-     different lightness/chroma than a small badge, so --color-primary
-     itself fails the validator's lightness/chroma checks here even though
-     it's fine for text/badges. --color-chart-series-2 sits close to
-     --color-success in hue so "Completed" still reads as the same green
-     as everywhere else in the app. */
-  --color-chart-series-1: #3987e5;
-  --color-chart-series-2: #199e70;
+  /* Chart series — Total (brand indigo) vs. Completed (success green), so
+     "Completed" still reads as the same green as StatusBadge elsewhere. */
+  --color-chart-series-1: #7c74e8;
+  --color-chart-series-2: #3fba84;
 
-  /* Brand mark — a fixed vivid blue for the logo specifically.
-     --color-primary/--color-primary-container invert which one is vivid
-     vs. pale between dark and light mode (M3 tonal-role convention, tuned
-     for text/button legibility); a logo needs to look like the same brand
-     color in both themes instead, so it gets its own token. Same value as
-     --color-chart-series-1 (already validated as visible in both modes)
-     under a name that reflects this use, not chart-specific meaning. */
-  --color-brand: #3987e5;
+  /* Brand mark — logo stays the same indigo in both themes. */
+  --color-brand: #7c74e8;
 
   /* Fonts */
-  --font-headline: 'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-headline: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Manrope', ui-sans-serif, system-ui, sans-serif;
   --font-label: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
 
   /* ------------------------------------------------------------------
-     Neumorphism tokens (2026-08-25 redesign, replaces the 08-24 glass
-     pass). Soft-UI shapes read as raised/pressed purely through a pair
-     of shadows cast in opposite directions from an imagined light
-     source (top-left) — no border, no transparency, surface stays the
-     *same* colour as the page behind it. Needs a light-catch shadow and
-     a dark-recess shadow per theme (dark mode's "light" catch is a
-     faint highlight, not white; light mode's "dark" shadow is a cool
-     grey, not black) — tokenised here, consumed via the .neu / .neu-sm
-     / .neu-strong / .neu-inset utilities below.
-     Recipe: https://neumorphism.io, adapted to this app's existing
-     surface colours rather than the classic #e0e5ec demo grey. */
-  --neu-surface: var(--color-background);
-  --neu-light: rgb(255 255 255 / 4%);
-  --neu-dark: rgb(0 0 0 / 65%);
+     Flat/bordered surface tokens (2026-09-05 redesign, replaces the
+     08-25 neumorphic --neu-* pair). A raised/pressed shadow no longer
+     applies here — the .neu / .neu-sm / .neu-strong / .neu-inset
+     utilities below now draw a 1px border plus a subtle drop shadow
+     instead, keeping their old class names (dozens of call sites) but a
+     completely different recipe. --neu-border is deliberately distinct
+     from --color-outline-variant even though they're the same value in
+     both themes today — this is the one border weight/color the "raised
+     panel" language uses; --color-outline-variant covers everything else
+     (table rules, dividers, input borders). */
+  --neu-border: var(--color-outline-variant);
+  --neu-shadow: 0 1px 2px rgb(0 0 0 / 24%);
+  --neu-shadow-strong: 0 16px 32px -8px rgb(0 0 0 / 45%), 0 4px 10px -4px rgb(0 0 0 / 35%);
 }
 
-/* Light palette (design.md §4) — wired, not yet default. Values derived
-   from the same brand family as the dark theme above (Stitch only exported
-   dark), keeping the primary blue and status colours consistent across
-   modes. Activate with <html data-theme="light">. */
+/* Light palette — the default look per the redesign canvas above.
+   Activate with <html data-theme="light">; dark (:root above) still loads
+   first per the existing theme default. */
 [data-theme='light'] {
   color-scheme: light;
 
-  --color-background: #f8fafc;
-  --color-on-background: #0f172a;
+  --color-background: #f7f8fa;
+  --color-on-background: #101828;
   --color-surface: #ffffff;
-  --color-surface-dim: #e2e8f0;
+  --color-surface-dim: #f1f3f6;
   --color-surface-bright: #ffffff;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f8fafc;
-  --color-surface-container: #f1f5f9;
-  --color-surface-container-high: #e7ecf3;
-  --color-surface-container-highest: #dde3ec;
-  --color-on-surface: #0f172a;
-  --color-on-surface-variant: #475569;
-  --color-outline: #94a3b8;
-  --color-outline-variant: #e2e8f0;
+  --color-surface-container-low: #fcfcfd;
+  --color-surface-container: #f1f3f6;
+  --color-surface-container-high: #e4e7ec;
+  --color-surface-container-highest: #d0d5dd;
+  --color-on-surface: #101828;
+  --color-on-surface-variant: #475467;
+  --color-outline: #98a2b3;
+  --color-outline-variant: #e4e7ec;
 
-  --color-primary: #0052ff;
+  --color-primary: #4f46e5;
   --color-on-primary: #ffffff;
-  --color-primary-container: #dfe3ff;
-  --color-on-primary-container: #001452;
+  --color-primary-container: #eef2ff;
+  --color-on-primary-container: #4f46e5;
 
-  --color-secondary: #475569;
+  --color-secondary: #475467;
   --color-on-secondary: #ffffff;
-  --color-secondary-container: #e2e8f0;
-  --color-on-secondary-container: #1e293b;
+  --color-secondary-container: #f1f3f6;
+  --color-on-secondary-container: #101828;
 
-  --color-tertiary: #bf3003;
+  --color-tertiary: #c4320a;
   --color-on-tertiary: #ffffff;
-  --color-tertiary-container: #ffdbd2;
-  --color-on-tertiary-container: #3c0800;
+  --color-tertiary-container: #ffeedb;
+  --color-on-tertiary-container: #7a1f06;
 
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
+  --color-success: #027a48;
+  --color-warning: #b54708;
+  --color-error: #d92d20;
   --color-on-error: #ffffff;
-  --color-error-container: #fee2e2;
-  --color-on-error-container: #93000a;
-  --color-accent-teal: #0d9488;
+  --color-error-container: #fee4e2;
+  --color-on-error-container: #b42318;
+  --color-accent-teal: #0e7490;
 
-  --color-tone-primary-bg: #dfe3ff;
-  --color-tone-primary-text: #0038b6;
-  --color-tone-success-bg: #d1fae5;
-  --color-tone-success-text: #047857;
-  --color-tone-warning-bg: #fef3c7;
-  --color-tone-warning-text: #b45309;
-  --color-tone-error-bg: #fee2e2;
-  --color-tone-error-text: #b91c1c;
-  --color-tone-neutral-bg: #f1f5f9;
-  --color-tone-neutral-text: #475569;
+  /* "primary" tone = In Progress specifically — its own blue, distinct
+     from --color-primary's indigo (see the :root block above). */
+  --color-tone-primary-bg: #eff4ff;
+  --color-tone-primary-text: #175cd3;
+  --color-tone-success-bg: #ecfdf3;
+  --color-tone-success-text: #027a48;
+  --color-tone-warning-bg: #fff4e5;
+  --color-tone-warning-text: #b54708;
+  --color-tone-error-bg: #fef3f2;
+  --color-tone-error-text: #b42318;
+  --color-tone-neutral-bg: #f2f4f7;
+  --color-tone-neutral-text: #475467;
 
-  /* Chart series — see the :root block above for why these differ from
-     --color-primary/--color-success. */
-  --color-chart-series-1: #2a78d6;
-  --color-chart-series-2: #1baf7a;
-  --color-brand: #2a78d6;
+  --color-chart-series-1: #4f46e5;
+  --color-chart-series-2: #027a48;
+  --color-brand: #4f46e5;
 
-  --neu-surface: var(--color-background);
-  --neu-light: rgb(255 255 255 / 90%);
-  --neu-dark: rgb(163 177 198 / 55%);
+  --neu-border: var(--color-outline-variant);
+  --neu-shadow: 0 1px 2px rgb(16 24 40 / 5%);
+  --neu-shadow-strong: 0 16px 32px -8px rgb(16 24 40 / 18%), 0 4px 10px -4px rgb(16 24 40 / 10%);
 }
 
 /* Map the runtime tokens above into Tailwind utilities (bg-surface,
@@ -315,78 +310,64 @@ body {
 }
 
 /* ==========================================================================
-   Neumorphism utilities (2026-08-25 redesign, replaces the 08-24 glass
-   pass — see --neu-* tokens above for the per-theme shadow colours).
+   Flat/bordered surface utilities (2026-09-05 redesign, replaces the
+   2026-08-25 neumorphic "soft UI" pass — see --neu-* tokens above).
 
-   Soft UI has one rule that matters more than any shadow value: the
-   element's own background MUST equal the surface it's sitting on, or
-   the shadow reads as a drop-shadow (a card floating above the page)
-   instead of the page itself pinching into a raised bump. That's why
-   every class below sets `background: var(--neu-surface)` rather than
-   any of the old --color-surface-container-* steps — those existed to
-   make glass panels distinguishable from the page by tint; neumorphism
-   makes them distinguishable by shadow alone.
+   The class names are kept exactly as they were (dozens of call sites
+   across the app) even though the recipe underneath is now the opposite
+   idea: a raised/pressed shadow pair gave way to a plain 1px border plus,
+   where the old class implied more visual weight, a soft drop shadow —
+   the bordered-card language design.md now calls for instead.
 
-   .neu        — default raised surface: cards, tiles, tables, buttons.
-   .neu-sm     — same raised look, tighter shadow spread for small
-                 controls (badges, icon wells) where the full-size
-                 shadow would overpower the shape.
-   .neu-strong — deeper shadow for chrome that needs to visually sit
-                 above other .neu panels (sidebar, header, dropdowns,
-                 modals) despite being the same flat colour.
-   .neu-inset  — pressed/recessed look: active toggles, focused inputs,
-                 anything that should read as "pushed in" rather than
-                 "popped out".
+   .neu        — default surface: cards, tiles, tables, buttons.
+   .neu-sm     — same border treatment, no shadow — small controls (badge-
+                 adjacent icon wells) where a shadow would overpower the
+                 shape.
+   .neu-strong — chrome that needs to visually sit above the page and
+                 other .neu panels (sidebar, header, dropdowns, modals) —
+                 same border, a deeper shadow.
+   .neu-inset  — recessed look: a filled sunken panel (surface-container)
+                 instead of a shadow trick — empty states, track grooves.
    ========================================================================== */
 /* @utility (not a plain class) so hover:/focus:/active: variants work on
-   these the same as any built-in Tailwind utility — Button's ghost
-   variant leans on hover:neu-sm below. */
+   these the same as any built-in Tailwind utility — ThemeToggle leans on
+   hover:neu-sm/active:neu-inset below. */
 @utility neu {
-  background: var(--neu-surface);
-  box-shadow:
-    -6px -6px 14px var(--neu-light),
-    6px 6px 14px var(--neu-dark);
+  background: var(--color-surface);
+  border: 1px solid var(--neu-border);
+  box-shadow: var(--neu-shadow);
 }
 
 @utility neu-sm {
-  background: var(--neu-surface);
-  box-shadow:
-    -3px -3px 7px var(--neu-light),
-    3px 3px 7px var(--neu-dark);
+  background: var(--color-surface);
+  border: 1px solid var(--neu-border);
 }
 
 @utility neu-strong {
-  background: var(--neu-surface);
-  box-shadow:
-    -10px -10px 22px var(--neu-light),
-    10px 10px 22px var(--neu-dark);
+  background: var(--color-surface);
+  border: 1px solid var(--neu-border);
+  box-shadow: var(--neu-shadow-strong);
 }
 
 @utility neu-inset {
-  background: var(--neu-surface);
-  box-shadow:
-    inset -4px -4px 10px var(--neu-light),
-    inset 4px 4px 10px var(--neu-dark);
+  background: var(--color-surface-container);
+  border: 1px solid var(--neu-border);
 }
 
-/* Tactile response for anything clickable: shadow deepens on hover (lifts
-   further off the page) and inverts to .neu-inset's pressed shadow on
-   :active (pushes in) — the physical metaphor soft UI is named for. Pair
-   with .neu on the element; this only owns the transition + the two
-   state overrides. */
+/* Tactile response for anything clickable: border/shadow lift slightly on
+   hover, settle back down (no lift, a beat darker) on :active — the flat
+   equivalent of soft UI's raised/pressed pair. Pair with .neu on the
+   element; this only owns the transition + the two state overrides. */
 .neu-interactive {
-  transition: box-shadow 200ms ease, transform 200ms ease;
+  transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 .neu-interactive:hover {
-  box-shadow:
-    -10px -10px 22px var(--neu-light),
-    10px 10px 22px var(--neu-dark);
+  border-color: var(--color-outline);
+  box-shadow: var(--neu-shadow-strong);
 }
 .neu-interactive:active {
   transform: translateY(1px);
-  box-shadow:
-    inset -4px -4px 10px var(--neu-light),
-    inset 4px 4px 10px var(--neu-dark);
+  box-shadow: var(--neu-shadow);
 }
 
 /* Accessibility (rules.md §10): focus must stay visible everywhere,

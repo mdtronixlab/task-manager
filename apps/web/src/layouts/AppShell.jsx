@@ -6,26 +6,27 @@ import Logo from '../components/Logo'
 import ProfileMenu from '../components/ProfileMenu'
 import ThemeToggle from '../components/ThemeToggle'
 
-// Desktop sidebar link: icon + label side by side. Soft UI's idiom for
-// "currently engaged" is pressed-in, not filled — active uses .neu-inset
-// (a recessed well) instead of the old tinted-pill treatment, still paired
-// with the primary tone on the label/icon so active state isn't shadow-only
-// (design.md §6–7, rules.md §10).
+// Desktop sidebar link: icon + label side by side. Active state is a
+// tinted fill (primary-container bg + on-primary-container text/icon) —
+// the flat-bordered redesign's idiom for "currently engaged", replacing
+// the 08-25 neumorphic pass's pressed-in .neu-inset well. Still paired
+// with the primary tone on the label/icon so active state isn't shadow- or
+// fill-only (design.md §6–7, rules.md §10).
 function sidebarNavLinkClassName({ isActive }) {
   return [
-    'flex items-center gap-3 rounded-xl px-3 py-2 text-body-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+    'flex items-center gap-3 rounded-lg px-3 py-2 text-body-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
     isActive
-      ? 'neu-inset font-medium text-tone-primary-text'
-      : 'text-on-surface-variant hover:neu-sm hover:text-on-surface',
+      ? 'bg-primary-container font-medium text-on-primary-container'
+      : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface',
   ].join(' ')
 }
 
-// Mobile bottom-bar tab: icon gets the M3-style pill highlight when active
-// (same tone token as the sidebar above), label stays small underneath.
+// Mobile bottom-bar tab: icon gets the same tinted-pill highlight when
+// active (same tokens as the sidebar above), label stays small underneath.
 function bottomNavLinkClassName({ isActive }) {
   return [
-    'flex flex-1 flex-col items-center gap-1 rounded-xl py-1.5 text-label-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-    isActive ? 'text-tone-primary-text' : 'text-on-surface-variant hover:text-on-surface',
+    'flex flex-1 flex-col items-center gap-1 rounded-lg py-1.5 text-label-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+    isActive ? 'text-on-primary-container' : 'text-on-surface-variant hover:text-on-surface',
   ].join(' ')
 }
 
@@ -36,8 +37,8 @@ function BottomNavLink({ link }) {
         <>
           <span
             className={[
-              'flex size-8 items-center justify-center rounded-full transition-all',
-              isActive ? 'neu-inset' : '',
+              'flex size-8 items-center justify-center rounded-full transition-colors',
+              isActive ? 'bg-primary-container' : '',
             ].join(' ')}
           >
             <link.icon className="size-5" aria-hidden="true" />
@@ -62,7 +63,7 @@ function BottomNavLink({ link }) {
  *
  * AdminLayout and StaffLayout are thin wrappers around this — only nav
  * links, content max-width, and an optional brand-cluster extra
- * (AdminLayout's "Super Admin" badge) differ between them.
+ * (AdminLayout's role badge) differ between them.
  *
  * @param {{
  *   navLinks: {to: string, label: string, icon: object}[],
@@ -90,26 +91,29 @@ export default function AppShell({ navLinks, maxWidthClassName = 'max-w-5xl', br
     <div className="min-h-screen text-on-surface sm:flex">
       {/* Mobile-only top bar: branding + account cluster. Below sm, primary
           nav lives in the bottom tab bar; sm and up, nav/branding/account
-          all move into the sidebar instead and this bar is hidden. */}
-      <div className="pointer-events-none sticky top-0 z-40 px-4 pt-4 sm:hidden">
-        <header className="neu-strong pointer-events-auto mx-auto flex max-w-lg items-center justify-between gap-4 rounded-2xl px-6 py-4">
-          <div className="flex items-center gap-3">
-            <Logo size="sm" showWordmark={false} />
-            {brandExtra}
-          </div>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            {profileMenu}
-          </div>
-        </header>
-      </div>
+          all move into the sidebar instead and this bar is hidden. Solid,
+          edge-to-edge app bar — not the floating .neu-strong pill the
+          sidebar/bottom-tab-bar use below — a header wants to read as
+          fixed chrome, not a panel floating over the page. */}
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-outline-variant/30 bg-surface px-4 py-3 sm:hidden">
+        <div className="flex items-center gap-3">
+          <Logo size="sm" showWordmark={false} />
+          {brandExtra}
+        </div>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          {profileMenu}
+        </div>
+      </header>
 
       {/* Desktop sidebar — sm and up only. Sticky (not fixed) so it lives
           inside the sm:flex row below and the flex-1 content column next to
           it gets the remaining width automatically, rather than hand-tuned
           left padding on `main` that would have to match the sidebar's
-          width by hand. Same floating rounded-card language (border, blur,
-          shadow) as the bars it replaces. */}
+          width by hand. Same floating .neu-strong pill language as the
+          bottom tab bar below (the mobile top bar switched to a solid
+          edge-to-edge app bar instead — a header reads better as fixed
+          chrome than a panel floating over the page). */}
       <aside className="neu-strong sticky top-4 z-40 hidden h-[calc(100vh-2rem)] w-60 shrink-0 flex-col self-start rounded-2xl p-4 sm:ml-4 sm:flex">
         <div className="flex items-center gap-3 px-2 pb-4">
           <Logo size="sm" />
@@ -157,7 +161,7 @@ export default function AppShell({ navLinks, maxWidthClassName = 'max-w-5xl', br
             type="button"
             onClick={quickAction.onClick}
             aria-label={quickAction.label}
-            className="-mt-8 flex size-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-chart-series-1 text-on-primary shadow-[-4px_-4px_10px_var(--neu-light),4px_4px_10px_var(--neu-dark),0_6px_18px_-4px_var(--color-primary)] transition-transform hover:brightness-110 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="-mt-8 flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary shadow-[0_12px_24px_-6px_var(--color-primary)] transition-transform hover:brightness-95 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <quickAction.icon className="size-6" aria-hidden="true" />
           </button>

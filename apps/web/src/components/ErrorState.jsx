@@ -14,7 +14,7 @@ export default function ErrorState({
     <div
       role="alert"
       className={[
-        'neu flex flex-col items-center justify-center gap-3 rounded-2xl px-6 py-12 text-center',
+        'neu flex flex-col items-center justify-center gap-3 rounded-lg px-6 py-12 text-center',
         className,
       ]
         .filter(Boolean)

@@ -1,9 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import ProtectedRoute from './routes/ProtectedRoute'
-import { ROLES } from './constants/roles'
+import { ROLES, ADMIN_ROLES } from './constants/roles'
 import LoginPage from './pages/Login/LoginPage'
 import DashboardPage from './pages/Dashboard/DashboardPage'
+import MyTasksPage from './pages/MyTasks/MyTasksPage'
 import TasksPage from './pages/Tasks/TasksPage'
 import StaffHistoryPage from './pages/Tasks/StaffHistoryPage'
 import StaffDetailPage from './pages/Staff/StaffDetailPage'
@@ -40,16 +41,33 @@ export default function App() {
         </Route>
       </Route>
 
-      {/* Admin-only pages (phases.md Phase 5/6) — nested under AdminLayout
-          as a proper layout route (see AdminLayout.jsx for why /dashboard
-          itself isn't folded in here too). */}
-      <Route element={<ProtectedRoute role={ROLES.SUPER_ADMIN} />}>
+      {/* Admin/Super Admin pages (phases.md Phase 5/6) — nested under
+          AdminLayout as a proper layout route (see AdminLayout.jsx for why
+          /dashboard itself isn't folded in here too). Org-wide task/report/
+          activity authority is shared by both roles (ADMIN_ROLES); Settings
+          (user/department/category management, custom notifications) is
+          Super Admin only — a separate ProtectedRoute below. */}
+      <Route element={<ProtectedRoute role={ADMIN_ROLES} />}>
         <Route element={<AdminLayout />}>
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/staff/:userId" element={<StaffDetailPage />} />
           <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/activity" element={<ActivityLogPage />} />
+        </Route>
+      </Route>
+
+      {/* An Admin's own operational work (rules.md §16-adjacent: a Super
+          Admin's role is oversight, not doing tasks themselves) — separate
+          ProtectedRoute since it's neither of ADMIN_ROLES, just ADMIN. */}
+      <Route element={<ProtectedRoute role={ROLES.ADMIN} />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/my-tasks" element={<MyTasksPage />} />
+        </Route>
+      </Route>
+
+      <Route element={<ProtectedRoute role={ROLES.SUPER_ADMIN} />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
 

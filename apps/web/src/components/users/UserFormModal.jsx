@@ -7,6 +7,7 @@ import { ROLES } from '../../constants/roles'
 
 const ROLE_OPTIONS = [
   { value: ROLES.STAFF, label: 'Staff' },
+  { value: ROLES.ADMIN, label: 'Admin' },
   { value: ROLES.SUPER_ADMIN, label: 'Super Admin' },
 ]
 

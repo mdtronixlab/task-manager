@@ -20,9 +20,9 @@ export default function CompletionMeter({ rate, className = '' }) {
   }, [rate])
 
   return (
-    <Card interactive className={['rounded-2xl p-4', className].filter(Boolean).join(' ')}>
+    <Card interactive className={['p-4', className].filter(Boolean).join(' ')}>
       <div className="flex items-center gap-3">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-tone-primary-bg text-tone-primary-text shadow-[-3px_-3px_7px_var(--neu-light),3px_3px_7px_var(--neu-dark)]">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
           <Gauge className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
@@ -30,11 +30,10 @@ export default function CompletionMeter({ rate, className = '' }) {
           <p className="text-headline-md font-headline tabular-nums text-on-surface">{displayRate}%</p>
         </div>
       </div>
-      {/* neu-inset: the track reads as a carved-in groove (soft UI's usual
-          progress-bar treatment) instead of a flat fill. */}
-      <div className="neu-inset mt-3 h-2 w-full overflow-hidden rounded-full">
+      {/* A flat neutral track instead of soft UI's carved-in groove. */}
+      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-surface-container-high">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-primary to-chart-series-1 transition-[width] duration-700 ease-out"
+          className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out"
           style={{ width: `${barWidth}%` }}
         />
       </div>

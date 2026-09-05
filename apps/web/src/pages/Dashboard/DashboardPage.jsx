@@ -1,5 +1,5 @@
 import { useAuth } from '../../context/AuthContext'
-import { ROLES } from '../../constants/roles'
+import { isElevatedRole } from '../../constants/roles'
 import StaffLayout from '../../layouts/StaffLayout'
 import AdminLayout from '../../layouts/AdminLayout'
 import StaffDashboard from './StaffDashboard'
@@ -13,7 +13,7 @@ import AdminDashboard from './AdminDashboard'
 export default function DashboardPage() {
   const { appUser } = useAuth()
 
-  if (appUser.role === ROLES.SUPER_ADMIN) {
+  if (isElevatedRole(appUser.role)) {
     return (
       <AdminLayout>
         <AdminDashboard />

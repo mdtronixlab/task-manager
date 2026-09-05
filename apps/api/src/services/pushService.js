@@ -232,3 +232,20 @@ export async function sendTaskDueReminder(user, task) {
     body: `"${task.title}" is due now.`,
   });
 }
+
+/**
+ * Notifies a staff member that a Super Admin just assigned them a new task.
+ * Called by taskService.js's createTask, admin-assigning branch only — never
+ * fires when someone creates their own task (self-assignment, including a
+ * Super Admin assigning to themselves). Best-effort like the other
+ * automatic triggers: taskService.js swallows any failure here (push not
+ * configured, no subscriptions, provider outage) so it never blocks task
+ * creation itself.
+ */
+export async function sendTaskAssignedNotification(user, task, assignedByName) {
+  ensureConfigured();
+  return sendToUser(user.userId, {
+    title: 'New task assigned to you',
+    body: `${assignedByName} assigned you: "${task.title}"`,
+  });
+}

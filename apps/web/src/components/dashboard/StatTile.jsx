@@ -14,13 +14,6 @@ const TONE_CLASSES = {
   error: 'bg-tone-error-bg text-tone-error-text',
 }
 
-// A small raised bump, same --neu-* shadow pair as everything else, laid
-// over each tone's own flat colour instead of the page's — soft UI's
-// dual light/dark shadow reads as "a bump" on *any* background, so the
-// coloured tone doesn't need to match --neu-surface the way a full panel
-// (.neu on Card) does.
-const NEU_ICON_SHADOW = 'shadow-[-3px_-3px_7px_var(--neu-light),3px_3px_7px_var(--neu-dark)]'
-
 // Home Assistant Lovelace "tile" layout: a colour-washed icon badge leading
 // a name/state stack, inside a generously rounded card. The icon carries the
 // tone here (not the number) so status still isn't colour-only — the label
@@ -29,14 +22,9 @@ export default function StatTile({ label, value, tone = 'neutral', icon: Icon, c
   const displayValue = useCountUp(value)
 
   return (
-    <Card
-      interactive
-      className={['flex items-center gap-3 rounded-2xl p-4', className].filter(Boolean).join(' ')}
-    >
+    <Card interactive className={['flex items-center gap-3 p-4', className].filter(Boolean).join(' ')}>
       {Icon && (
-        <span
-          className={`flex size-11 shrink-0 items-center justify-center rounded-full ${NEU_ICON_SHADOW} ${TONE_CLASSES[tone]}`}
-        >
+        <span className={`flex size-11 shrink-0 items-center justify-center rounded-full ${TONE_CLASSES[tone]}`}>
           <Icon className="size-5" aria-hidden="true" />
         </span>
       )}

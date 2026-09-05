@@ -4,7 +4,7 @@
 
 export function Table({ className = '', children, ...props }) {
   return (
-    <div className="neu w-full overflow-x-auto rounded-2xl">
+    <div className="neu w-full overflow-x-auto rounded-lg">
       <table
         className={['w-full border-collapse text-left text-body-sm', className]
           .filter(Boolean)

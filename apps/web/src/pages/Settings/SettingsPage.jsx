@@ -21,6 +21,14 @@ import NotificationComposerCard from '../../components/notifications/Notificatio
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
 
+// Role badge for the Team table below — three tiers now (Staff/Admin/Super
+// Admin), 'primary' tone reserved for the two elevated roles so they read
+// distinctly from a plain Staff row at a glance.
+const ROLE_LABELS = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Admin', STAFF: 'Staff' }
+function roleBadgeTone(role) {
+  return role === 'STAFF' ? 'neutral' : 'primary'
+}
+
 /** Small icon-button used as each management table row's "Edit" action. */
 function EditButton({ onClick, label }) {
   return (
@@ -344,9 +352,7 @@ export default function SettingsPage() {
                     <TableCell className="font-medium text-on-surface">{u.name}</TableCell>
                     <TableCell className="text-on-surface-variant">{u.email}</TableCell>
                     <TableCell>
-                      <Badge tone={u.role === 'SUPER_ADMIN' ? 'primary' : 'neutral'}>
-                        {u.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Staff'}
-                      </Badge>
+                      <Badge tone={roleBadgeTone(u.role)}>{ROLE_LABELS[u.role] || u.role}</Badge>
                     </TableCell>
                     <TableCell className="text-on-surface-variant">
                       {u.departmentId ? departmentsById[u.departmentId] || '—' : '—'}

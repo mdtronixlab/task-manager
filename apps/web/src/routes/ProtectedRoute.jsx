@@ -8,8 +8,9 @@ import { useAuth } from '../context/AuthContext'
  * request; hiding a route here is never the security boundary
  * (architecture.md §12, rules.md §12).
  *
- * @param {{ role?: string }} props Pass `role` (e.g. ROLES.SUPER_ADMIN) to
- *   additionally require that role; omit to just require any signed-in user.
+ * @param {{ role?: string|string[] }} props Pass `role` (e.g. ROLES.SUPER_ADMIN,
+ *   or an array like constants/roles.js's ADMIN_ROLES) to additionally
+ *   require one of those roles; omit to just require any signed-in user.
  */
 export default function ProtectedRoute({ role }) {
   const { status, appUser } = useAuth()
@@ -19,7 +20,8 @@ export default function ProtectedRoute({ role }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  if (role && appUser.role !== role) {
+  const allowedRoles = Array.isArray(role) ? role : role ? [role] : null
+  if (allowedRoles && !allowedRoles.includes(appUser.role)) {
     return <Navigate to="/dashboard" replace />
   }
 
