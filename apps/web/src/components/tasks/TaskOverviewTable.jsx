@@ -6,8 +6,13 @@ import PriorityBadge from '../PriorityBadge'
 import EmptyState from '../EmptyState'
 import TaskDetailModal from './TaskDetailModal'
 
-function formatTime(iso) {
-  return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+function formatTimestamp(iso) {
+  return new Date(iso).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 /**
@@ -94,7 +99,7 @@ export default function TaskOverviewTable({ tasks, staffById, categoriesById, on
               <TableCell>
                 <StatusBadge status={task.status} />
               </TableCell>
-              <TableCell className="text-right tabular-nums">{formatTime(task.createdAt)}</TableCell>
+              <TableCell className="text-right tabular-nums">{formatTimestamp(task.createdAt)}</TableCell>
               {editable && (
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">

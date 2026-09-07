@@ -6,7 +6,6 @@ import { getDepartments } from '../../services/departments'
 import { getCategories } from '../../services/categories'
 import { defaultTaskFilters, buildTaskQueryParams } from '../../utils/taskFilters'
 import { ROLES } from '../../constants/roles'
-import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import Button from '../../components/Button'
 import TaskFilters from '../../components/tasks/TaskFilters'
@@ -37,7 +36,6 @@ export default function TasksPage() {
   const [deletingTask, setDeletingTask] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const { showToast } = useToast()
-  const { appUser } = useAuth()
 
   const loadReferenceData = useCallback(async () => {
     const [users, departmentData, categoryData] = await Promise.all([
@@ -45,21 +43,18 @@ export default function TasksPage() {
       getDepartments(),
       getCategories(),
     ])
-    // Staff filter/assign-to lists are staff-role users plus the signed-in
-    // user themselves, but only when they're a normal Admin — an Admin has
-    // their own operational tasks (MyTasksPage.jsx), a Super Admin doesn't,
-    // so isn't offered here. taskService.js's createTask already lets any
-    // admin own tasks (targetUserId defaults to the caller) — this just
-    // decides whether that's surfaced in the UI.
+    // Staff filter/assign-to lists are Staff- and Admin-role users — Admins
+    // do real task work too (MyTasksPage.jsx's self-assignment), so a Super
+    // Admin can hand them a task the same as a Staff member, and this list
+    // naturally includes an Admin viewing their own Tasks page. Super Admin
+    // is oversight only — never a task recipient, self included — so it's
+    // excluded here regardless of who's asking (taskService.js's createTask
+    // enforces the same restriction server-side).
     setAllUsers(users)
-    setStaff(
-      users.filter(
-        (u) => u.role === ROLES.STAFF || (u.userId === appUser?.userId && appUser?.role === ROLES.ADMIN),
-      ),
-    )
+    setStaff(users.filter((u) => u.role === ROLES.STAFF || u.role === ROLES.ADMIN))
     setDepartments(departmentData)
     setCategories(categoryData)
-  }, [appUser?.userId, appUser?.role])
+  }, [])
 
   const loadTasks = useCallback(async (currentFilters) => {
     setLoading(true)
@@ -82,10 +77,10 @@ export default function TasksPage() {
   }, [filters, loadTasks])
 
   // From the full roster, not the filtered `staff` below — a task can be
-  // owned by anyone `staff` deliberately excludes (another Admin's or
-  // Super Admin's own self-assigned task, an Admin viewed by someone else),
-  // and this feeds TaskOverviewTable's Staff column, which needs to resolve
-  // every task owner, not just who's offered in the filter/assign-to picker.
+  // owned by a Super Admin (a legacy self-assigned task, or a role change
+  // since assignment), which `staff` deliberately excludes, and this feeds
+  // TaskOverviewTable's Staff column, which needs to resolve every task
+  // owner, not just who's offered in the filter/assign-to picker.
   const staffById = useMemo(() => Object.fromEntries(allUsers.map((u) => [u.userId, u.name])), [allUsers])
   // The browse/filter dropdown above (TaskFilters) keeps inactive staff
   // visible — useful for filtering historical tasks by someone since

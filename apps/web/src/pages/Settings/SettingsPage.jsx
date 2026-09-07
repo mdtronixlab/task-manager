@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Upload, Trash2, UserPlus, FolderPlus, Tag, Pencil } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 import { useBranding } from '../../context/BrandingContext'
 import { useToast } from '../../context/ToastContext'
 import { updateLogo, removeLogo } from '../../services/settings'
@@ -13,6 +14,7 @@ import Badge from '../../components/Badge'
 import Logo from '../../components/Logo'
 import LoadingState from '../../components/LoadingState'
 import ErrorState from '../../components/ErrorState'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import UserFormModal from '../../components/users/UserFormModal'
 import DepartmentFormModal from '../../components/departments/DepartmentFormModal'
 import CategoryFormModal from '../../components/categories/CategoryFormModal'
@@ -43,6 +45,26 @@ function EditButton({ onClick, label }) {
   )
 }
 
+/**
+ * Team-table-only "Delete" action — there's no hard delete (memory.md
+ * Decision 3: a user's task/activity history must stay intact), so this is
+ * just a one-click shortcut to the same deactivate that UserFormModal's
+ * Status field already does, for whoever doesn't want the extra trip
+ * through Edit.
+ */
+function DeleteButton({ onClick, label }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-tone-error-bg hover:text-tone-error-text"
+    >
+      <Trash2 className="size-4" aria-hidden="true" />
+    </button>
+  )
+}
+
 // architecture.md §2 /settings route — Branding, Team, Departments,
 // Categories, and the notification composer. Every management table here
 // supports add + edit (including reactivating/deactivating) — a Super
@@ -50,6 +72,7 @@ function EditButton({ onClick, label }) {
 // deleting anything with historical records attached (memory.md Decision
 // 3) — deactivating is the "removal" primitive throughout.
 export default function SettingsPage() {
+  const { appUser } = useAuth()
   const { logoUrl, applicationName, refresh } = useBranding()
   const { showToast } = useToast()
   const [preview, setPreview] = useState(null)
@@ -67,6 +90,9 @@ export default function SettingsPage() {
   const [userModalOpen, setUserModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
   const [savingUser, setSavingUser] = useState(false)
+
+  const [deletingUser, setDeletingUser] = useState(null)
+  const [deletingUserBusy, setDeletingUserBusy] = useState(false)
 
   const [deptModalOpen, setDeptModalOpen] = useState(false)
   const [editingDept, setEditingDept] = useState(null)
@@ -126,6 +152,21 @@ export default function SettingsPage() {
       await loadTeam()
     } finally {
       setSavingUser(false)
+    }
+  }
+
+  async function handleDeleteUserConfirm() {
+    if (!deletingUser) return
+    setDeletingUserBusy(true)
+    try {
+      await updateUser(deletingUser.userId, { active: false })
+      showToast(`${deletingUser.name} deactivated.`)
+      setDeletingUser(null)
+      await loadTeam()
+    } catch (err) {
+      showToast(err.message || 'Could not deactivate that user. Please try again.', { tone: 'error' })
+    } finally {
+      setDeletingUserBusy(false)
     }
   }
 
@@ -343,28 +384,39 @@ export default function SettingsPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Edit</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => (
-                  <TableRow key={u.userId}>
-                    <TableCell className="font-medium text-on-surface">{u.name}</TableCell>
-                    <TableCell className="text-on-surface-variant">{u.email}</TableCell>
-                    <TableCell>
-                      <Badge tone={roleBadgeTone(u.role)}>{ROLE_LABELS[u.role] || u.role}</Badge>
-                    </TableCell>
-                    <TableCell className="text-on-surface-variant">
-                      {u.departmentId ? departmentsById[u.departmentId] || '—' : '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge tone={u.active ? 'success' : 'neutral'}>{u.active ? 'Active' : 'Inactive'}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <EditButton onClick={() => openEditUser(u)} label={`Edit ${u.name}`} />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {users.map((u) => {
+                  const isSelf = u.userId === appUser?.userId
+                  return (
+                    <TableRow key={u.userId}>
+                      <TableCell className="font-medium text-on-surface">{u.name}</TableCell>
+                      <TableCell className="text-on-surface-variant">{u.email}</TableCell>
+                      <TableCell>
+                        <Badge tone={roleBadgeTone(u.role)}>{ROLE_LABELS[u.role] || u.role}</Badge>
+                      </TableCell>
+                      <TableCell className="text-on-surface-variant">
+                        {u.departmentId ? departmentsById[u.departmentId] || '—' : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge tone={u.active ? 'success' : 'neutral'}>{u.active ? 'Active' : 'Inactive'}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <EditButton onClick={() => openEditUser(u)} label={`Edit ${u.name}`} />
+                          {/* Deactivating yourself or an already-inactive account is a no-op the
+                              backend rejects (or has nothing to do) — same isSelf guard as
+                              updateUser's own "can't deactivate your own account" check. */}
+                          {!isSelf && u.active && (
+                            <DeleteButton onClick={() => setDeletingUser(u)} label={`Delete ${u.name}`} />
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
@@ -478,6 +530,20 @@ export default function SettingsPage() {
         departments={departments}
         user={editingUser}
         submitting={savingUser}
+      />
+      <ConfirmDialog
+        open={Boolean(deletingUser)}
+        onClose={() => setDeletingUser(null)}
+        onConfirm={handleDeleteUserConfirm}
+        title="Delete this user?"
+        description={
+          deletingUser
+            ? `${deletingUser.name} will be deactivated — they can no longer sign in, but their tasks and activity history stay intact. This can be undone from Edit.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        busy={deletingUserBusy}
+        danger
       />
       <DepartmentFormModal
         open={deptModalOpen}

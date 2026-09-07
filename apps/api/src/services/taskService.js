@@ -259,10 +259,11 @@ export async function dismissCarryForward(currentUser, taskId) {
 /**
  * @param {object} currentUser
  * @param {object} data {title, description, priority, categoryId, userId?}
- *   `userId` — an Admin/Super Admin assigning this task to a staff member
- *   instead of themselves. Silently ignored for a STAFF caller (rules.md
- *   §13: never trust a userId the client supplies) — they always get their
- *   own task regardless of what's in the request body, same as getTasks
+ *   `userId` — an Admin/Super Admin assigning this task to a Staff or Admin
+ *   member instead of themselves (never a Super Admin: oversight role, not
+ *   a task recipient). Silently ignored for a STAFF caller (rules.md §13:
+ *   never trust a userId the client supplies) — they always get their own
+ *   task regardless of what's in the request body, same as getTasks
  *   already does.
  */
 export async function createTask(currentUser, data = {}) {
@@ -283,8 +284,8 @@ export async function createTask(currentUser, data = {}) {
   let assignee = null; // set below only when an admin assigns to someone else — powers the push notification after creation.
   if (isAdmin && data.userId && data.userId !== currentUser.userId) {
     assignee = await prisma.user.findUnique({ where: { userId: data.userId } });
-    if (!assignee) throw ValidationError('Staff member does not exist.');
-    if (assignee.role !== ROLES.STAFF) throw ValidationError('Tasks can only be assigned to staff.');
+    if (!assignee) throw ValidationError('Assignee does not exist.');
+    if (assignee.role === ROLES.SUPER_ADMIN) throw ValidationError('Tasks cannot be assigned to a Super Admin.');
     if (!assignee.active) throw ValidationError('Cannot assign a task to a disabled account.');
     targetUserId = assignee.userId;
   }
