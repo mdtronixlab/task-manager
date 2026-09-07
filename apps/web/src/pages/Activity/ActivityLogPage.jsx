@@ -52,6 +52,8 @@ function describeLog(log) {
       return `updated ${log.field} of a category`
     case ACTIVITY_ACTIONS.CUSTOM_NOTIFICATION_SENT:
       return `sent notification "${log.newValue}"`
+    case ACTIVITY_ACTIONS.DATABASE_BACKUP_CREATED:
+      return `downloaded a database backup ("${log.newValue}")`
     default:
       return ACTIVITY_ACTION_LABELS[log.action] || log.action
   }

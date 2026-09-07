@@ -110,6 +110,45 @@ export async function downloadFile(path, fallbackName = 'download') {
   URL.revokeObjectURL(url)
 }
 
+/**
+ * Uploads a raw file as the request body (not JSON, not multipart) — the
+ * counterpart to downloadFile() above, for the one endpoint that needs a
+ * binary body (settings.js's database restore). Still unwraps the normal
+ * {success,data}/{success,error} envelope, since the response itself is
+ * plain JSON either way.
+ */
+export async function uploadFile(path, file) {
+  const token = await getIdToken()
+  const headers = { Accept: 'application/json', 'Content-Type': 'application/octet-stream' }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  let response
+  try {
+    response = await fetch(`${API_URL}${path}`, { method: 'POST', headers, body: file })
+  } catch {
+    throw new ApiError('NETWORK_ERROR', 'Could not reach the server. Check your connection.', 0)
+  }
+
+  let payload = null
+  try {
+    payload = await response.json()
+  } catch {
+    // Fall through — payload stays null and the check below reports it.
+  }
+
+  if (!payload) {
+    throw new ApiError('INVALID_RESPONSE', 'The server returned an unexpected response.', response.status)
+  }
+  if (!payload.success) {
+    throw new ApiError(
+      payload.error?.code,
+      payload.error?.message || 'Something went wrong. Please try again.',
+      response.status,
+    )
+  }
+  return payload.data
+}
+
 /** GET /api/users/me — architecture.md §13. */
 export function getCurrentUser() {
   return api.get('/api/users/me')

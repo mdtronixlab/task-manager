@@ -17,6 +17,11 @@ export function errorHandler(err, req, res, next) {
     return res.status(400).json(error('INVALID_REQUEST', 'Request body must be valid JSON.'));
   }
 
+  // express.raw()'s limit (settings.js's restore upload) throws this when exceeded.
+  if (err.type === 'entity.too.large') {
+    return res.status(400).json(error('VALIDATION_ERROR', 'That file is too large to be a valid backup.'));
+  }
+
   console.error('Unexpected error:', err);
   res
     .status(500)

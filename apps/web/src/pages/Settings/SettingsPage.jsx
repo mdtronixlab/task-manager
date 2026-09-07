@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Upload, Trash2, UserPlus, FolderPlus, Tag, Pencil } from 'lucide-react'
+import { Upload, Download, DatabaseBackup, Trash2, UserPlus, FolderPlus, Tag, Pencil } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useBranding } from '../../context/BrandingContext'
 import { useToast } from '../../context/ToastContext'
-import { updateLogo, removeLogo } from '../../services/settings'
+import { updateLogo, removeLogo, downloadBackup, restoreBackup } from '../../services/settings'
 import { getUsers, createUser, updateUser } from '../../services/users'
 import { getDepartments, createDepartment, updateDepartment } from '../../services/departments'
 import { getCategories, createCategory, updateCategory } from '../../services/categories'
@@ -102,6 +102,13 @@ export default function SettingsPage() {
   const [editingCategory, setEditingCategory] = useState(null)
   const [savingCategory, setSavingCategory] = useState(false)
 
+  const [backingUp, setBackingUp] = useState(false)
+  const [backupError, setBackupError] = useState(null)
+  const [restoreFile, setRestoreFile] = useState(null)
+  const [restoring, setRestoring] = useState(false)
+  const [restoreStarted, setRestoreStarted] = useState(false)
+  const restoreInputRef = useRef(null)
+
   const departmentsById = Object.fromEntries(departments.map((d) => [d.departmentId, d.name]))
 
   const loadTeam = useCallback(async () => {
@@ -167,6 +174,48 @@ export default function SettingsPage() {
       showToast(err.message || 'Could not deactivate that user. Please try again.', { tone: 'error' })
     } finally {
       setDeletingUserBusy(false)
+    }
+  }
+
+  async function handleDownloadBackup() {
+    setBackingUp(true)
+    setBackupError(null)
+    try {
+      await downloadBackup()
+    } catch (err) {
+      setBackupError(err.message || 'Could not download the backup. Please try again.')
+    } finally {
+      setBackingUp(false)
+    }
+  }
+
+  function handleRestoreFileChosen(event) {
+    const file = event.target.files?.[0]
+    // Reset the input so picking the exact same file again still fires
+    // onChange (browsers otherwise treat it as no change).
+    event.target.value = ''
+    if (file) {
+      setBackupError(null)
+      setRestoreFile(file)
+    }
+  }
+
+  async function handleRestoreConfirm() {
+    if (!restoreFile) return
+    setRestoring(true)
+    setBackupError(null)
+    try {
+      await restoreBackup(restoreFile)
+      setRestoreFile(null)
+      setRestoreStarted(true)
+      // The API process exits right after responding (backupService.js) so
+      // its host restarts it against the newly-restored file — reload once
+      // it's had time to come back rather than leaving a stale page up.
+      setTimeout(() => window.location.reload(), 6000)
+    } catch (err) {
+      setBackupError(err.message || 'Could not restore that backup. Please try again.')
+    } finally {
+      setRestoring(false)
     }
   }
 
@@ -521,6 +570,52 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle>Database</CardTitle>
+          <CardDescription>
+            Download a full backup of the live database, or restore one — restoring replaces
+            every current task, user, and setting, so use it carefully.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadBackup}
+              loading={backingUp}
+              loadingText="Preparing…"
+            >
+              <Download className="size-4" aria-hidden="true" />
+              Download backup
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => restoreInputRef.current?.click()}>
+              <DatabaseBackup className="size-4" aria-hidden="true" />
+              Restore from backup…
+            </Button>
+            <input
+              ref={restoreInputRef}
+              type="file"
+              accept=".db"
+              onChange={handleRestoreFileChosen}
+              className="hidden"
+            />
+          </div>
+          {restoreStarted && (
+            <p className="rounded-md bg-tone-warning-bg px-3 py-2 text-body-sm text-tone-warning-text">
+              Database restored — the server is restarting. This page will reload automatically
+              in a few seconds.
+            </p>
+          )}
+          {backupError && (
+            <p role="alert" className="rounded-md bg-tone-error-bg px-3 py-2 text-body-sm text-tone-error-text">
+              {backupError}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {!teamLoading && !teamError && <NotificationComposerCard users={users} departments={departments} />}
 
       <UserFormModal
@@ -558,6 +653,20 @@ export default function SettingsPage() {
         onSubmit={handleSubmitCategory}
         category={editingCategory}
         submitting={savingCategory}
+      />
+      <ConfirmDialog
+        open={Boolean(restoreFile)}
+        onClose={() => setRestoreFile(null)}
+        onConfirm={handleRestoreConfirm}
+        title="Restore database from backup?"
+        description={
+          restoreFile
+            ? `This replaces every current task, user, and setting with what's in "${restoreFile.name}" — a safety copy of what's here now is taken automatically first, but this cannot be undone from the app itself. The server restarts right after, so make sure your own account exists and is active in this backup, or you'll be locked out.`
+            : undefined
+        }
+        confirmLabel="Restore"
+        busy={restoring}
+        danger
       />
     </div>
   )

@@ -1004,6 +1004,20 @@ Recommended:
   needs a separate backup path.
 - Test restores occasionally, not just backups.
 
+> **Addendum (2026-09-07):** implemented as a Super-Admin self-service
+> feature rather than only an ops-level cron task — Settings → Database
+> (`apps/api/src/services/backupService.js`, `GET`/`POST
+> /api/settings/backup`/`/restore`). Backup uses SQLite's `VACUUM INTO` for
+> a consistent snapshot regardless of journal mode; restore validates the
+> upload (header, required tables, `PRAGMA integrity_check`) against its
+> own temp copy, auto-snapshots the live database first as an undo path,
+> then atomically swaps the file in and exits the process so the host's
+> supervisor (Docker `restart: unless-stopped`, or the equivalent on
+> Render/Railway/Fly) restarts it against the new file — there is no safe
+> way to re-point a live Prisma connection at a different file in place.
+> This doesn't replace periodic off-box backups (still recommended above)
+> — it's the in-app path for a deliberate, admin-initiated backup/restore.
+
 Future migration should be possible without redesigning the entire frontend.
 
 ---
