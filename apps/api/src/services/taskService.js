@@ -7,8 +7,8 @@
 import { prisma } from '../db.js';
 import { ROLES, TASK_STATUS, TASK_PRIORITY, DEFAULT_PRIORITY, isElevatedRole } from '../config.js';
 import { generateTaskId } from '../lib/ids.js';
-import { today, resolveDateRange, addDays } from '../lib/time.js';
-import { requireString, requireEnum, requireDueTimeOrNull } from '../lib/validate.js';
+import { today, resolveDateRange, addDays, assertWithinTaskDateWindow } from '../lib/time.js';
+import { requireString, requireEnum, requireDueTimeOrNull, requireDateOnly } from '../lib/validate.js';
 import { AppError, NotFound, Forbidden, ValidationError } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
 import { sendTaskAssignedNotification } from './pushService.js';
@@ -258,19 +258,24 @@ export async function dismissCarryForward(currentUser, taskId) {
 
 /**
  * @param {object} currentUser
- * @param {object} data {title, description, priority, categoryId, userId?}
+ * @param {object} data {title, description, priority, categoryId, taskDate?, userId?}
  *   `userId` — an Admin/Super Admin assigning this task to a Staff or Admin
  *   member instead of themselves (never a Super Admin: oversight role, not
  *   a task recipient). Silently ignored for a STAFF caller (rules.md §13:
  *   never trust a userId the client supplies) — they always get their own
  *   task regardless of what's in the request body, same as getTasks
- *   already does.
+ *   already does. `taskDate` — memory.md Decision 1 update: defaults to
+ *   today (org timezone) when omitted, same as before, but can be set to a
+ *   different date within assertWithinTaskDateWindow's window to backfill a
+ *   missed day or plan ahead.
  */
 export async function createTask(currentUser, data = {}) {
   const title = requireString(data.title, 'Task title', 200);
   const description = typeof data.description === 'string' ? data.description.trim().slice(0, 2000) : '';
   const priority = data.priority ? requireEnum(data.priority, TASK_PRIORITY, 'Priority') : DEFAULT_PRIORITY;
   const dueTime = requireDueTimeOrNull(data.dueTime);
+  const taskDate = data.taskDate ? requireDateOnly(data.taskDate, 'Task date') : await today();
+  await assertWithinTaskDateWindow(taskDate);
 
   let categoryId = null;
   if (data.categoryId) {
@@ -294,7 +299,7 @@ export async function createTask(currentUser, data = {}) {
     data: {
       taskId: await generateTaskId(),
       userId: targetUserId,
-      taskDate: await today(), // never manual — prd.md #10 / memory.md Decision 1
+      taskDate, // manual within a bounded window, else today — prd.md #10 / memory.md Decision 1 update
       title,
       description,
       categoryId,
@@ -329,7 +334,7 @@ export async function createTask(currentUser, data = {}) {
 /**
  * @param {object} currentUser
  * @param {string} taskId
- * @param {object} data {title?, description?, priority?, categoryId?, status?}
+ * @param {object} data {title?, description?, priority?, categoryId?, taskDate?, status?}
  */
 export async function updateTask(currentUser, taskId, data = {}) {
   requireString(taskId, 'taskId');
@@ -368,6 +373,22 @@ export async function updateTask(currentUser, taskId, data = {}) {
       if (!category) throw ValidationError('Category does not exist.');
     }
     updates.categoryId = data.categoryId || null;
+  }
+
+  if (data.taskDate !== undefined) {
+    // memory.md Decision 1 update — rescheduling an existing task, same
+    // bounded window as creating one. TaskFormModal always resends the
+    // task's current date on an ordinary edit (it's a required field, not
+    // opt-in), so the window is only enforced when the date is actually
+    // changing — otherwise editing a task from outside the window (e.g. old
+    // history, StaffHistoryPage's editable history) would break on every
+    // edit that leaves the date untouched.
+    const taskDate = requireDateOnly(data.taskDate, 'Task date');
+    if (taskDate !== task.taskDate) {
+      await assertWithinTaskDateWindow(taskDate);
+      changedFields.push(['taskDate', task.taskDate, taskDate]);
+    }
+    updates.taskDate = taskDate;
   }
 
   if (data.dueTime !== undefined) {

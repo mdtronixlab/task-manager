@@ -6,6 +6,7 @@ import { getDepartments } from '../../services/departments'
 import { getCategories } from '../../services/categories'
 import { defaultTaskFilters, buildTaskQueryParams } from '../../utils/taskFilters'
 import { ROLES } from '../../constants/roles'
+import { describeTaskDateIfNotToday } from '../../constants/taskDate'
 import { useToast } from '../../context/ToastContext'
 import Button from '../../components/Button'
 import TaskFilters from '../../components/tasks/TaskFilters'
@@ -113,7 +114,12 @@ export default function TasksPage() {
         // (its multi-row "Add another task") — one entry even for a
         // single task.
         await createTasks(data)
-        showToast(data.length > 1 ? `${data.length} tasks added.` : 'Task added.')
+        // A non-today date means it won't show up under the default
+        // range:'today' filter once the list reloads below — call out
+        // where it landed so that doesn't read as it silently vanishing.
+        const dateNote = describeTaskDateIfNotToday(data[0]?.taskDate)
+        const countLabel = data.length > 1 ? `${data.length} tasks added` : 'Task added'
+        showToast(dateNote ? `${countLabel} for ${dateNote}.` : `${countLabel}.`)
       }
       setModalOpen(false)
       setEditingTask(null)

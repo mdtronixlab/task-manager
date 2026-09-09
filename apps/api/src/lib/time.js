@@ -57,6 +57,32 @@ export function addDays(dateStr, days) {
   return formatDateOnly(d);
 }
 
+// How far from "today" a task's date can be manually set (memory.md
+// Decision 1 update — staff/admins can now backfill a missed day or plan
+// ahead when adding/editing a task, rather than always getting today, but
+// within a bounded window rather than any date ever, so task lists can't be
+// seeded arbitrarily far off). Mirrored on the frontend
+// (constants/taskDate.js) as a UI hint for the date picker's min/max — this
+// copy, checked in taskService.js, is the one actually enforced.
+export const TASK_DATE_WINDOW_DAYS = 7;
+
+/**
+ * Throws unless dateStr falls within TASK_DATE_WINDOW_DAYS of the org's
+ * current date (org timezone, never the browser's clock — rules.md
+ * §18/§19), in either direction.
+ * @param {string} dateStr YYYY-MM-DD, already validated as a real date.
+ */
+export async function assertWithinTaskDateWindow(dateStr) {
+  const todayStr = await today();
+  const earliest = addDays(todayStr, -TASK_DATE_WINDOW_DAYS);
+  const latest = addDays(todayStr, TASK_DATE_WINDOW_DAYS);
+  if (dateStr < earliest || dateStr > latest) {
+    throw ValidationError(
+      `Task date must be within ${TASK_DATE_WINDOW_DAYS} days of today (${earliest} to ${latest}).`,
+    );
+  }
+}
+
 function startOfWeek(dateStr) {
   // Monday–Sunday (ISO 8601). Not a documented product decision — the
   // simplest reasonable default until specified otherwise.

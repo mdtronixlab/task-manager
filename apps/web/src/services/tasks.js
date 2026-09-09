@@ -10,7 +10,7 @@ export function getTasks(params = {}) {
   return api.get(`/api/tasks${query ? `?${query}` : ''}`)
 }
 
-/** @param {{title: string, description?: string, priority?: string, categoryId?: string, dueTime?: string}} data */
+/** @param {{title: string, description?: string, priority?: string, categoryId?: string, dueTime?: string, taskDate?: string}} data */
 export function createTask(data) {
   return api.post('/api/tasks', data)
 }

@@ -311,11 +311,11 @@ completedAt
 
 # 11. Important Product Decisions
 
-## Decision 1 — Daily Date
+## Decision 1 — Daily Date (updated 2026-09-09)
 
-Staff should not normally select today's date manually.
+A new task defaults to today's date, and the backend still determines what "today" is (org timezone, never the browser's clock).
 
-The backend should determine the task date.
+Unlike the original version of this decision, the date is no longer fixed: staff/admins can now set a task's date to a day other than today — to backfill a missed day or plan ahead — but only within a bounded window (currently 7 days back/forward from today; `TASK_DATE_WINDOW_DAYS` in `apps/api/src/lib/time.js`, mirrored as a UI hint in `apps/web/src/constants/taskDate.js`). The backend re-validates and enforces this window regardless of what the frontend sends. The date can also be changed later when editing an existing task, same window.
 
 ---
 

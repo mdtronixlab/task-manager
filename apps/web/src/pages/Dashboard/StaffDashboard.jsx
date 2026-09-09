@@ -14,9 +14,12 @@ import TaskFormModal from "../../components/tasks/TaskFormModal";
 import CarryForwardList from "../../components/tasks/CarryForwardList";
 
 // prd.md §6/§11 — the staff daily workflow: today's summary, add task,
-// today's task list, status actions. Task date is never picked by the user
-// — the backend resolves "today" itself (memory.md Decision 1). No greeting
-// hero banner — the "Add Task" trigger lives on the Today's Tasks header
+// today's task list, status actions. The add form defaults a new task's
+// date to today (memory.md Decision 1) but, per its update, can be pointed
+// at another day within TaskFormModal's window — such a task simply won't
+// appear in this page's today-only list (handleFormSubmit's toast calls
+// out where it landed). No greeting hero banner — the "Add Task" trigger
+// lives on the Today's Tasks header
 // instead (plus StaffLayout's mobile "+" quick-add, and TaskList's own
 // empty-state button when there's nothing yet). The actual task workflow
 // (data, modal/busy state, every handler) lives in useOwnTaskWorkflow,

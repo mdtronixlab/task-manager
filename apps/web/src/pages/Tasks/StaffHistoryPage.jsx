@@ -15,11 +15,12 @@ import ErrorState from '../../components/ErrorState'
 // userId regardless of params (rules.md §13) — no userId is passed here at
 // all, so this reuses that guarantee rather than re-deriving it.
 //
-// Editable (title/description/priority/category/due time) and deletable,
-// same as TasksPage.jsx's org-wide table — the backend's updateTask/
-// deleteTask never restricted this to today's tasks in the first place
-// (isOwner || isAdmin, no date check), so this was always a frontend-only
-// restriction. No status actions here, though (Start/Complete/Block don't
+// Editable (title/description/priority/category/due time, plus date within
+// TaskFormModal's window — memory.md Decision 1 update) and deletable, same
+// as TasksPage.jsx's org-wide table — the backend's updateTask/deleteTask
+// never restricted this to today's tasks in the first place (isOwner ||
+// isAdmin, no date check), so this was always a frontend-only restriction.
+// No status actions here, though (Start/Complete/Block don't
 // map cleanly onto a task from a past day) and no Add Task — this stays a
 // browse-and-correct view of what already happened, not where a new task
 // gets entered; that's the dashboard's job, "today" only.

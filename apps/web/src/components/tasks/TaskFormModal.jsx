@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import Modal from '../Modal'
 import Input from '../Input'
@@ -6,6 +6,7 @@ import Textarea from '../Textarea'
 import Select from '../Select'
 import Button from '../Button'
 import { TASK_PRIORITY, TASK_PRIORITY_META, DEFAULT_TASK_PRIORITY } from '../../constants/taskPriority'
+import { taskDateBounds, todayLocal } from '../../constants/taskDate'
 import { getTaskTitleSuggestions } from '../../services/tasks'
 
 const PRIORITY_OPTIONS = Object.values(TASK_PRIORITY).map((value) => ({
@@ -41,11 +42,15 @@ function rowFromTask(task) {
 
 /**
  * Add/Edit task form (phases.md Phase 3 — fields: Title, Description,
- * Priority, Category, Due time). Task date and status are never set here —
- * the backend owns taskDate (memory.md Decision 1) and status changes go
- * through the dedicated action buttons on `TaskCard`, not this form. Due
- * time is optional (prd.md §25 V2) — when set, taskDueReminderService sends
- * a push notification to the task's owner at that org-local time.
+ * Priority, Category, Due time, Date). Status is never set here — status
+ * changes go through the dedicated action buttons on `TaskCard`, not this
+ * form. Date defaults to today but, per memory.md Decision 1's update, can
+ * be moved to another day (within the backend's TASK_DATE_WINDOW_DAYS
+ * window — see constants/taskDate.js) to backfill a missed day or plan
+ * ahead; the backend re-validates and enforces the window regardless of
+ * what this form sends. Due time is optional (prd.md §25 V2) — when set,
+ * taskDueReminderService sends a push notification to the task's owner at
+ * that org-local time.
  *
  * Two extras on top of the original single-task form: the title field
  * autocompletes from the assignee's own past task titles (staff tend to
@@ -76,15 +81,36 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
 
   const [rows, setRows] = useState(() => [emptyRow()])
   const [userId, setUserId] = useState('')
+  // One date for the whole form, not per-row — same reasoning as `userId`
+  // above: a batch of tasks added together is almost always meant for the
+  // same day, and editing only ever has one row anyway.
+  const [taskDate, setTaskDate] = useState(todayLocal())
   const [error, setError] = useState(null)
   const [suggestions, setSuggestions] = useState([])
   const requestIdRef = useRef(0)
+  // The picker's window is normally "today ± N days", but editing a task
+  // from outside that window (e.g. old history — StaffHistoryPage's
+  // editable history) must still let its untouched date submit: the native
+  // <input type="date" min max> blocks submission if the current value
+  // falls outside min/max, even when the user never touched the field. So
+  // the bounds widen just enough to include the task being edited's own
+  // date; the backend only enforces the true window when the date actually
+  // changes (taskService.js's updateTask).
+  const dateBounds = useMemo(() => {
+    const bounds = taskDateBounds()
+    if (!task?.taskDate) return bounds
+    return {
+      min: task.taskDate < bounds.min ? task.taskDate : bounds.min,
+      max: task.taskDate > bounds.max ? task.taskDate : bounds.max,
+    }
+  }, [task])
 
   useEffect(() => {
     if (!open) return
     setError(null)
     setRows([task ? rowFromTask(task) : emptyRow()])
     setUserId(singleAssignee)
+    setTaskDate(task ? task.taskDate : todayLocal())
     // staffOptions/task are only re-passed as genuinely new values when the
     // page's own data reloads, not every render — safe to leave out of the
     // deps without risking staleness.
@@ -141,6 +167,11 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
       return
     }
 
+    if (!taskDate) {
+      setError('Choose a date.')
+      return
+    }
+
     // A row left completely untouched (added via "+ Add another task" then
     // never filled in) is dropped silently rather than forcing a title on
     // it or blocking the rows that *are* filled in.
@@ -161,6 +192,7 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
       priority: row.priority,
       categoryId: row.categoryId || null,
       dueTime: row.dueTime || null,
+      taskDate,
       ...(showAssignee ? { userId } : {}),
     }))
 
@@ -202,6 +234,21 @@ export default function TaskFormModal({ open, onClose, onSubmit, categories, tas
             ]}
           />
         )}
+
+        <Input
+          type="date"
+          label="Date"
+          required
+          value={taskDate}
+          onChange={(e) => setTaskDate(e.target.value)}
+          min={dateBounds.min}
+          max={dateBounds.max}
+          hint={
+            isEditing
+              ? undefined
+              : `Defaults to today — pick another day to backfill or plan ahead (up to ${dateBounds.min} – ${dateBounds.max}).`
+          }
+        />
 
         {rows.map((row, index) => (
           <div

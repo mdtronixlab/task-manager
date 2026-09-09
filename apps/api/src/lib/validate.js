@@ -50,3 +50,26 @@ export function requireDueTimeOrNull(value) {
   }
   return value;
 }
+
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Validates a YYYY-MM-DD calendar-date string (rules.md §19's date-only
+ * format for taskDate) — rejects anything that doesn't match the shape, and
+ * anything that matches but isn't a real calendar day (e.g. 2026-02-30,
+ * which Date normalises away to March 2 rather than erroring).
+ * @param {*} value
+ * @param {string} fieldName
+ * @return {string}
+ */
+export function requireDateOnly(value, fieldName) {
+  if (typeof value !== 'string' || !DATE_ONLY_PATTERN.test(value)) {
+    throw ValidationError(`${fieldName} must be a valid date (YYYY-MM-DD).`);
+  }
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) {
+    throw ValidationError(`${fieldName} must be a valid date (YYYY-MM-DD).`);
+  }
+  return value;
+}

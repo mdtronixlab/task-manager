@@ -10,6 +10,7 @@ import {
 } from '../services/tasks'
 import { getCategories } from '../services/categories'
 import { TASK_STATUS, TASK_STATUS_META } from '../constants/taskStatus'
+import { describeTaskDateIfNotToday } from '../constants/taskDate'
 import { summarizeTasks } from '../utils/taskSummary'
 import { useToast } from '../context/ToastContext'
 
@@ -142,7 +143,12 @@ export function useOwnTaskWorkflow(userId) {
         showToast('Task updated.')
       } else {
         await createTasks(data)
-        showToast(data.length > 1 ? `${data.length} tasks added.` : 'Task added.')
+        // A non-today date means the new task won't show up in this page's
+        // "today" list once it reloads below — call out where it landed so
+        // that doesn't read as it silently vanishing.
+        const dateNote = describeTaskDateIfNotToday(data[0]?.taskDate)
+        const countLabel = data.length > 1 ? `${data.length} tasks added` : 'Task added'
+        showToast(dateNote ? `${countLabel} for ${dateNote}.` : `${countLabel}.`)
       }
       setModalOpen(false)
       setEditingTask(null)
