@@ -9,11 +9,34 @@ import { generateUserId } from '../lib/ids.js';
 import { requireString, requireEnum } from '../lib/validate.js';
 import { ValidationError, Forbidden, NotFound } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
+import { sendTestWhatsAppMessage } from './whatsappService.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Digits only, optional leading "+", 7-15 of them — loose enough to catch
+// an obviously wrong number at entry time without over-constraining format.
+const PHONE_PATTERN = /^\+?[0-9]{7,15}$/;
+// This deployment is India-only (rules.md/product decision) — a plain
+// 10-digit mobile number is assumed Indian so an admin never has to type
+// the country code themselves. whatsappService.js's toChatId() applies the
+// same default as a fallback for numbers already stored before this
+// existed, but new/edited entries are normalized to the full number here
+// so what's stored and what's shown (Settings > Team) already matches
+// what actually gets sent.
+const INDIA_COUNTRY_CODE = '91';
 
 function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
+}
+
+/** `''`/`null`/`undefined` all mean "no WhatsApp number" and pass through as `null` (clearing it on an edit). */
+function normalizePhoneOrNull(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const trimmed = String(value).trim();
+  if (!PHONE_PATTERN.test(trimmed)) {
+    throw ValidationError('WhatsApp number must be 7-15 digits (e.g. 9776373738, or with country code for a non-Indian number).');
+  }
+  const digits = trimmed.replace(/^\+/, '');
+  return digits.length === 10 ? `${INDIA_COUNTRY_CODE}${digits}` : digits;
 }
 
 function shapeUser(u) {
@@ -25,6 +48,7 @@ function shapeUser(u) {
     departmentId: u.departmentId,
     designation: u.designation,
     avatar: u.avatar,
+    phone: u.phone,
     active: u.active,
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
@@ -62,6 +86,7 @@ export async function createUser(currentUser, data = {}) {
   const role = requireEnum(data.role, ROLES, 'Role');
   const designation =
     typeof data.designation === 'string' && data.designation.trim() ? data.designation.trim().slice(0, 100) : null;
+  const phone = normalizePhoneOrNull(data.phone);
 
   let departmentId = null;
   if (data.departmentId) {
@@ -83,6 +108,7 @@ export async function createUser(currentUser, data = {}) {
       role,
       departmentId,
       designation,
+      phone,
       active: true,
     },
   });
@@ -146,6 +172,12 @@ export async function updateUser(currentUser, userId, data = {}) {
       typeof data.designation === 'string' && data.designation.trim() ? data.designation.trim().slice(0, 100) : null;
   }
 
+  if (data.phone !== undefined) {
+    const phone = normalizePhoneOrNull(data.phone);
+    if (phone !== user.phone) changedFields.push(['phone', user.phone, phone]);
+    updates.phone = phone;
+  }
+
   if (data.active !== undefined) {
     const active = Boolean(data.active);
     if (isSelf && !active) {
@@ -172,4 +204,17 @@ export async function updateUser(currentUser, userId, data = {}) {
   }
 
   return shapeUser(updated);
+}
+
+/**
+ * Settings > Team's per-row "Send test WhatsApp" action — lets a Super
+ * Admin confirm a number they just entered actually works, without having
+ * to go through the general-purpose notification composer. Super Admin
+ * only — enforced by requireRole in the route.
+ * @param {string} userId
+ */
+export async function sendTestWhatsApp(userId) {
+  const user = await prisma.user.findUnique({ where: { userId } });
+  if (!user) throw NotFound('User not found.');
+  return sendTestWhatsAppMessage(user);
 }

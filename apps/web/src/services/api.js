@@ -177,7 +177,9 @@ export function sendTestPushNotification() {
 /**
  * POST /api/push/send — Super Admin only. `target` is
  * `{ scope: 'ALL' | 'DEPARTMENT' | 'USER', departmentId?, userId? }`.
+ * `sendWhatsApp: true` also fans the same title/body out over WhatsApp to
+ * whichever matched recipients have a number on file.
  */
-export function sendCustomPushNotification({ title, body, target }) {
-  return api.post('/api/push/send', { title, body, target })
+export function sendCustomPushNotification({ title, body, target, sendWhatsApp }) {
+  return api.post('/api/push/send', { title, body, target, sendWhatsApp })
 }

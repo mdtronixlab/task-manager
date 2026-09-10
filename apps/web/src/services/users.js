@@ -7,17 +7,22 @@ export function getUsers() {
   return api.get('/api/users')
 }
 
-/** @param {{name: string, email: string, role: string, departmentId?: string, designation?: string}} data */
+/** @param {{name: string, email: string, role: string, departmentId?: string, designation?: string, phone?: string}} data */
 export function createUser(data) {
   return api.post('/api/users', data)
 }
 
 /**
  * @param {string} userId
- * @param {{name?: string, role?: string, departmentId?: string|null, designation?: string|null, active?: boolean}} data
+ * @param {{name?: string, role?: string, departmentId?: string|null, designation?: string|null, phone?: string|null, active?: boolean}} data
  *   Partial — only send the fields being changed. Server blocks a Super
  *   Admin deactivating or demoting their own account.
  */
 export function updateUser(userId, data) {
   return api.patch(`/api/users/${userId}`, data)
+}
+
+/** POST /api/users/:userId/test-whatsapp — sends a real WhatsApp message to that user right now, to confirm their number works. */
+export function sendTestWhatsApp(userId) {
+  return api.post(`/api/users/${userId}/test-whatsapp`)
 }

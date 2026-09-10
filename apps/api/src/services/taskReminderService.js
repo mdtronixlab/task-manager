@@ -18,6 +18,7 @@ import { prisma } from '../db.js';
 import { ROLES } from '../config.js';
 import { getOrgTimezone, today } from '../lib/time.js';
 import { isPushConfigured, sendTaskReminder } from './pushService.js';
+import { isWhatsAppConfigured, sendTaskReminderWhatsApp } from './whatsappService.js';
 
 const CHECK_INTERVAL_MS = 60 * 1000;
 
@@ -50,7 +51,9 @@ async function currentOrgMinuteOfDay() {
  * @return {Promise<{staffCount: number, pendingCount: number, notified: number}>}
  */
 export async function runTaskReminderSweep() {
-  if (!isPushConfigured()) return { staffCount: 0, pendingCount: 0, notified: 0 };
+  const pushOn = isPushConfigured();
+  const waOn = isWhatsAppConfigured();
+  if (!pushOn && !waOn) return { staffCount: 0, pendingCount: 0, notified: 0 };
 
   const date = await today();
   const staff = await prisma.user.findMany({ where: { role: ROLES.STAFF, active: true } });
@@ -66,8 +69,18 @@ export async function runTaskReminderSweep() {
   const doneIds = new Set(withTaskToday.map((t) => t.userId));
   const pending = staff.filter((u) => !doneIds.has(u.userId));
 
-  const results = await Promise.allSettled(pending.map((u) => sendTaskReminder(u)));
-  const notified = results.filter((r) => r.status === 'fulfilled' && r.value.sent > 0).length;
+  // Each staff member counts as "notified" if either channel got through —
+  // avoids double-counting someone who has both push and WhatsApp enabled.
+  const results = await Promise.allSettled(
+    pending.map(async (u) => {
+      const outcomes = await Promise.allSettled([
+        pushOn ? sendTaskReminder(u) : null,
+        waOn ? sendTaskReminderWhatsApp(u) : null,
+      ]);
+      return outcomes.some((o) => o.status === 'fulfilled' && o.value?.sent > 0);
+    }),
+  );
+  const notified = results.filter((r) => r.status === 'fulfilled' && r.value).length;
 
   return { staffCount: staff.length, pendingCount: pending.length, notified };
 }

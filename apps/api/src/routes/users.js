@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { ROLES, ADMIN_ROLES } from '../config.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { success } from '../lib/response.js';
-import { getUsers, getCurrentUser, createUser, updateUser } from '../services/userService.js';
+import { getUsers, getCurrentUser, createUser, updateUser, sendTestWhatsApp } from '../services/userService.js';
 
 const router = Router();
 
@@ -34,6 +34,16 @@ router.post('/', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
 router.patch('/:userId', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
     res.json(success(await updateUser(req.user, req.params.userId, req.body), 'User updated.'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Manual "does this number actually work" check — sends a real WhatsApp
+// message to the given user right now (whatsappService.js).
+router.post('/:userId/test-whatsapp', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    res.json(success(await sendTestWhatsApp(req.params.userId), 'Test WhatsApp message sent.'));
   } catch (err) {
     next(err);
   }

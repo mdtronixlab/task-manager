@@ -51,12 +51,13 @@ router.post('/test', async (req, res, next) => {
 });
 
 // A Super Admin's free-form broadcast — { title, body, target: { scope:
-// 'ALL'|'DEPARTMENT'|'USER', departmentId?, userId? } }. sendCustomNotification
-// validates the payload and resolves recipients itself.
+// 'ALL'|'DEPARTMENT'|'USER', departmentId?, userId? }, sendWhatsApp? }.
+// sendCustomNotification validates the payload and resolves recipients
+// itself; sendWhatsApp additionally fans it out over WhatsApp.
 router.post('/send', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
-    const { title, body, target } = req.body;
-    res.json(success(await sendCustomNotification(req.user, { title, body, target }), 'Notification sent.'));
+    const { title, body, target, sendWhatsApp } = req.body;
+    res.json(success(await sendCustomNotification(req.user, { title, body, target, sendWhatsApp }), 'Notification sent.'));
   } catch (err) {
     next(err);
   }

@@ -8,11 +8,13 @@
 
 import webpush from 'web-push';
 import { prisma } from '../db.js';
-import { config, ACTIVITY_ACTIONS, NOTIFICATION_TARGET_SCOPE } from '../config.js';
+import { config, ACTIVITY_ACTIONS } from '../config.js';
 import { generatePushSubscriptionId } from '../lib/ids.js';
-import { requireString, requireEnum } from '../lib/validate.js';
+import { requireString } from '../lib/validate.js';
 import { ValidationError, AppError } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
+import { resolveNotificationTargets } from '../lib/notificationTargets.js';
+import { sendCustomWhatsAppBroadcast } from './whatsappService.js';
 
 let configured = false;
 function ensureConfigured() {
@@ -115,43 +117,20 @@ async function sendToUser(userId, payload) {
 }
 
 /**
- * Resolves a Super Admin's chosen recipients for sendCustomNotification.
- * `target.scope` decides which of the other fields matter — mirrors the
- * shape apps/web's notification composer sends.
- * @param {{scope: string, departmentId?: string, userId?: string}} target
- * @return {Promise<Array<{userId: string}>>}
- */
-async function resolveNotificationTargets(target) {
-  const scope = requireEnum(target?.scope, NOTIFICATION_TARGET_SCOPE, 'target.scope');
-
-  if (scope === NOTIFICATION_TARGET_SCOPE.ALL) {
-    return prisma.user.findMany({ where: { active: true }, select: { userId: true } });
-  }
-
-  if (scope === NOTIFICATION_TARGET_SCOPE.DEPARTMENT) {
-    const departmentId = requireString(target.departmentId, 'target.departmentId');
-    return prisma.user.findMany({ where: { active: true, departmentId }, select: { userId: true } });
-  }
-
-  // USER
-  const userId = requireString(target.userId, 'target.userId');
-  const user = await prisma.user.findUnique({ where: { userId }, select: { userId: true, active: true } });
-  if (!user || !user.active) {
-    throw ValidationError('Selected user was not found or is no longer active.');
-  }
-  return [user];
-}
-
-/**
  * A Super Admin's free-form push broadcast — POST /api/push/send. Unlike
  * the automatic reminders above, title/body are admin-authored and the
  * recipient set is their choice (everyone, one department, or one
  * person), so this is the one sender that validates its own payload and
  * logs an activity entry (rules.md §26 — administrative operations are
  * logged) rather than using a fixed message.
- * @return {Promise<{targetCount: number, notified: number}>}
+ *
+ * `sendWhatsApp: true` additionally fans the same title/body out over
+ * WhatsApp (whatsappService.js) to whichever of the resolved recipients
+ * have a phone number on file — push itself always fires regardless, so
+ * this is strictly an extra channel on top, not an alternative to it.
+ * @return {Promise<{targetCount: number, notified: number, whatsappNotified?: number}>}
  */
-export async function sendCustomNotification(currentUser, { title, body, target }) {
+export async function sendCustomNotification(currentUser, { title, body, target, sendWhatsApp }) {
   ensureConfigured();
   const notifTitle = requireString(title, 'title', 120);
   const notifBody = requireString(body, 'body', 500);
@@ -166,6 +145,10 @@ export async function sendCustomNotification(currentUser, { title, body, target 
   );
   const notified = results.filter((r) => r.status === 'fulfilled' && r.value.sent > 0).length;
 
+  const whatsappNotified = sendWhatsApp
+    ? (await sendCustomWhatsAppBroadcast(recipients, notifTitle, notifBody)).notified
+    : undefined;
+
   await logActivity(
     currentUser.userId,
     null,
@@ -173,10 +156,10 @@ export async function sendCustomNotification(currentUser, { title, body, target 
     'title',
     null,
     notifTitle,
-    { targetScope: target?.scope, targetCount: recipients.length, notified },
+    { targetScope: target?.scope, targetCount: recipients.length, notified, ...(sendWhatsApp ? { whatsappNotified } : {}) },
   );
 
-  return { targetCount: recipients.length, notified };
+  return { targetCount: recipients.length, notified, whatsappNotified };
 }
 
 /** Manual "does this actually work" check for the current user. */

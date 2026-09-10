@@ -102,4 +102,19 @@ export const config = {
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY || null,
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || null,
   vapidSubject: process.env.VAPID_SUBJECT || 'mailto:mdtronix.lab@gmail.com',
+  // WhatsApp, via a self-hosted OpenWA instance (whatsappService.js).
+  // openwaSessionId is the *session UUID* OpenWA assigned when the WhatsApp
+  // number was linked (OpenWA dashboard > Sessions > session details) — its
+  // human-readable session name alone won't work, its API takes the UUID.
+  // Optional at startup, same as the VAPID pair above — only required once
+  // an actual send is attempted.
+  openwaApiUrl: (process.env.OPENWA_API_URL || 'http://localhost:2785').replace(/\/+$/, ''),
+  openwaApiKey: process.env.OPENWA_API_KEY || null,
+  openwaSessionId: process.env.OPENWA_SESSION_ID || null,
+  // Optional — the id (not name; names can be edited) of an OpenWA
+  // Templates entry (Sessions > Templates) to use for the morning "add
+  // your task" reminder instead of the plain built-in wording. Fetched
+  // fresh on every send (whatsappService.js), so editing it in OpenWA's
+  // own dashboard takes effect immediately, no redeploy.
+  openwaTaskReminderTemplateId: process.env.OPENWA_TASK_REMINDER_TEMPLATE_ID || null,
 };

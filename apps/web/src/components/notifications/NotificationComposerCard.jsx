@@ -27,6 +27,7 @@ export default function NotificationComposerCard({ users, departments }) {
   const [scope, setScope] = useState('ALL')
   const [departmentId, setDepartmentId] = useState('')
   const [userId, setUserId] = useState('')
+  const [sendWhatsApp, setSendWhatsApp] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState(null)
 
@@ -39,6 +40,7 @@ export default function NotificationComposerCard({ users, departments }) {
     setScope('ALL')
     setDepartmentId('')
     setUserId('')
+    setSendWhatsApp(false)
   }
 
   async function handleSend(event) {
@@ -58,11 +60,13 @@ export default function NotificationComposerCard({ users, departments }) {
     try {
       const target =
         scope === 'DEPARTMENT' ? { scope, departmentId } : scope === 'USER' ? { scope, userId } : { scope }
-      const result = await sendCustomPushNotification({ title, body, target })
+      const result = await sendCustomPushNotification({ title, body, target, sendWhatsApp })
+      const whatsappSuffix =
+        sendWhatsApp && result.whatsappNotified > 0 ? ` (+${result.whatsappNotified} via WhatsApp)` : ''
       showToast(
         result.notified > 0
-          ? `Sent to ${result.notified} of ${result.targetCount} recipient(s).`
-          : `${result.targetCount} recipient(s) matched, but none have notifications enabled right now.`,
+          ? `Sent to ${result.notified} of ${result.targetCount} recipient(s).${whatsappSuffix}`
+          : `${result.targetCount} recipient(s) matched, but none have notifications enabled right now.${whatsappSuffix}`,
       )
       resetForm()
     } catch (err) {
@@ -119,6 +123,15 @@ export default function NotificationComposerCard({ users, departments }) {
               options={[{ value: '', label: 'Select a staff member…' }, ...staffOptions]}
             />
           )}
+          <label className="flex items-center gap-2 text-body-sm text-on-surface">
+            <input
+              type="checkbox"
+              checked={sendWhatsApp}
+              onChange={(e) => setSendWhatsApp(e.target.checked)}
+              className="size-4 rounded border-outline-variant text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            />
+            Also send via WhatsApp (to recipients with a number on file)
+          </label>
           {error && (
             <p role="alert" className="rounded-md bg-tone-error-bg px-3 py-2 text-body-sm text-tone-error-text">
               {error}

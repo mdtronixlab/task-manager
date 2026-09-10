@@ -11,6 +11,7 @@ import { prisma } from '../db.js';
 import { getOrgTimezone, today } from '../lib/time.js';
 import { TASK_STATUS } from '../config.js';
 import { isPushConfigured, sendTaskDueReminder } from './pushService.js';
+import { isWhatsAppConfigured, sendTaskDueReminderWhatsApp } from './whatsappService.js';
 
 const CHECK_INTERVAL_MS = 60 * 1000;
 
@@ -37,7 +38,9 @@ let intervalHandle = null;
  * @return {Promise<{matched: number, notified: number}>}
  */
 export async function runTaskDueReminderSweep() {
-  if (!isPushConfigured()) return { matched: 0, notified: 0 };
+  const pushOn = isPushConfigured();
+  const waOn = isWhatsAppConfigured();
+  if (!pushOn && !waOn) return { matched: 0, notified: 0 };
 
   const hhmm = await currentOrgHHMM();
   const date = await today();
@@ -63,8 +66,18 @@ export async function runTaskDueReminderSweep() {
     data: { dueReminderSentAt: new Date() },
   });
 
-  const results = await Promise.allSettled(due.map((t) => sendTaskDueReminder(t.user, t)));
-  const notified = results.filter((r) => r.status === 'fulfilled' && r.value.sent > 0).length;
+  // Each task counts as "notified" if either channel got through — avoids
+  // double-counting an owner who has both push and WhatsApp enabled.
+  const results = await Promise.allSettled(
+    due.map(async (t) => {
+      const outcomes = await Promise.allSettled([
+        pushOn ? sendTaskDueReminder(t.user, t) : null,
+        waOn ? sendTaskDueReminderWhatsApp(t.user, t) : null,
+      ]);
+      return outcomes.some((o) => o.status === 'fulfilled' && o.value?.sent > 0);
+    }),
+  );
+  const notified = results.filter((r) => r.status === 'fulfilled' && r.value).length;
 
   return { matched: due.length, notified };
 }

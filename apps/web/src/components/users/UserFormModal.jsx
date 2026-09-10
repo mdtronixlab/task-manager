@@ -17,7 +17,7 @@ const STATUS_OPTIONS = [
 ]
 
 function emptyForm() {
-  return { name: '', email: '', role: ROLES.STAFF, departmentId: '', designation: '', active: true }
+  return { name: '', email: '', role: ROLES.STAFF, departmentId: '', designation: '', phone: '', active: true }
 }
 
 function formFromUser(user) {
@@ -27,6 +27,7 @@ function formFromUser(user) {
     role: user.role,
     departmentId: user.departmentId || '',
     designation: user.designation || '',
+    phone: user.phone || '',
     active: user.active,
   }
 }
@@ -73,6 +74,7 @@ export default function UserFormModal({ open, onClose, onSubmit, departments, us
         role: form.role,
         departmentId: form.departmentId || null,
         designation: form.designation.trim() || null,
+        phone: form.phone.trim() || null,
       }
       if (isEditing) {
         payload.active = form.active === true || form.active === 'true'
@@ -141,6 +143,14 @@ export default function UserFormModal({ open, onClose, onSubmit, departments, us
           onChange={updateField('designation')}
           maxLength={100}
           placeholder="e.g. Developer (optional)"
+        />
+        <Input
+          label="WhatsApp number"
+          value={form.phone}
+          onChange={updateField('phone')}
+          maxLength={20}
+          placeholder="e.g. 9776373738 (optional)"
+          hint="Just the 10-digit number — country code is added automatically. Enables WhatsApp reminders and task-assigned messages for this person."
         />
         {isEditing && (
           <Select

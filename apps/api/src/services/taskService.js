@@ -12,6 +12,7 @@ import { requireString, requireEnum, requireDueTimeOrNull, requireDateOnly } fro
 import { AppError, NotFound, Forbidden, ValidationError } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
 import { sendTaskAssignedNotification } from './pushService.js';
+import { sendTaskAssignedWhatsApp } from './whatsappService.js';
 
 // Allowed status transitions — prd.md §8, rules.md §22.
 const TASK_STATUS_TRANSITIONS = {
@@ -319,13 +320,19 @@ export async function createTask(currentUser, data = {}) {
   });
 
   if (assignee) {
-    // Best-effort — push not configured, no subscriptions, or a provider
-    // outage should never fail the task creation request itself.
-    try {
-      await sendTaskAssignedNotification(assignee, task, currentUser.name);
-    } catch (err) {
-      console.error('[taskService] task-assigned notification failed:', err);
-    }
+    // Best-effort, both channels — push/WhatsApp not configured, no
+    // subscriptions/phone number, or a provider outage should never fail
+    // the task creation request itself.
+    const outcomes = await Promise.allSettled([
+      sendTaskAssignedNotification(assignee, task, currentUser.name),
+      sendTaskAssignedWhatsApp(assignee, task, currentUser.name),
+    ]);
+    const channels = ['push', 'whatsapp'];
+    outcomes.forEach((outcome, i) => {
+      if (outcome.status === 'rejected') {
+        console.error(`[taskService] task-assigned ${channels[i]} notification failed:`, outcome.reason);
+      }
+    });
   }
 
   return shapeTask(task);

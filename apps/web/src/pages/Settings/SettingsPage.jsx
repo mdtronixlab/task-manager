@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Upload, Download, DatabaseBackup, Trash2, UserPlus, FolderPlus, Tag, Pencil } from 'lucide-react'
+import { Upload, Download, DatabaseBackup, Trash2, UserPlus, FolderPlus, Tag, Pencil, MessageCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useBranding } from '../../context/BrandingContext'
 import { useToast } from '../../context/ToastContext'
 import { updateLogo, removeLogo, downloadBackup, restoreBackup } from '../../services/settings'
-import { getUsers, createUser, updateUser } from '../../services/users'
+import { getUsers, createUser, updateUser, sendTestWhatsApp } from '../../services/users'
 import { getDepartments, createDepartment, updateDepartment } from '../../services/departments'
 import { getCategories, createCategory, updateCategory } from '../../services/categories'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/Card'
@@ -65,6 +65,21 @@ function DeleteButton({ onClick, label }) {
   )
 }
 
+/** Team-table-only "Send test WhatsApp" action — only shown for a row with a number on file, to confirm it actually works. */
+function TestWhatsAppButton({ onClick, label, busy }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      aria-label={label}
+      className="rounded-md p-1.5 text-on-surface-variant transition-colors hover:bg-tone-success-bg hover:text-tone-success-text disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <MessageCircle className="size-4" aria-hidden="true" />
+    </button>
+  )
+}
+
 // architecture.md §2 /settings route — Branding, Team, Departments,
 // Categories, and the notification composer. Every management table here
 // supports add + edit (including reactivating/deactivating) — a Super
@@ -93,6 +108,8 @@ export default function SettingsPage() {
 
   const [deletingUser, setDeletingUser] = useState(null)
   const [deletingUserBusy, setDeletingUserBusy] = useState(false)
+
+  const [testingWhatsAppUserId, setTestingWhatsAppUserId] = useState(null)
 
   const [deptModalOpen, setDeptModalOpen] = useState(false)
   const [editingDept, setEditingDept] = useState(null)
@@ -159,6 +176,18 @@ export default function SettingsPage() {
       await loadTeam()
     } finally {
       setSavingUser(false)
+    }
+  }
+
+  async function handleTestWhatsApp(user) {
+    setTestingWhatsAppUserId(user.userId)
+    try {
+      await sendTestWhatsApp(user.userId)
+      showToast(`Test WhatsApp message sent to ${user.name}.`)
+    } catch (err) {
+      showToast(err.message || 'Could not send the test message. Please try again.', { tone: 'error' })
+    } finally {
+      setTestingWhatsAppUserId(null)
     }
   }
 
@@ -432,6 +461,7 @@ export default function SettingsPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Department</TableHead>
+                  <TableHead>WhatsApp</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -450,10 +480,24 @@ export default function SettingsPage() {
                         {u.departmentId ? departmentsById[u.departmentId] || '—' : '—'}
                       </TableCell>
                       <TableCell>
+                        {u.phone ? (
+                          <Badge tone="success">{u.phone}</Badge>
+                        ) : (
+                          <span className="text-on-surface-variant">Not set</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Badge tone={u.active ? 'success' : 'neutral'}>{u.active ? 'Active' : 'Inactive'}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
+                          {u.phone && (
+                            <TestWhatsAppButton
+                              onClick={() => handleTestWhatsApp(u)}
+                              label={`Send test WhatsApp to ${u.name}`}
+                              busy={testingWhatsAppUserId === u.userId}
+                            />
+                          )}
                           <EditButton onClick={() => openEditUser(u)} label={`Edit ${u.name}`} />
                           {/* Deactivating yourself or an already-inactive account is a no-op the
                               backend rejects (or has nothing to do) — same isSelf guard as

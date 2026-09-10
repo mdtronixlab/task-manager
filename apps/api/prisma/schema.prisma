@@ -25,6 +25,12 @@ model User {
   departmentId String?
   designation  String?
   avatar       String?
+  // WhatsApp number (digits, optionally with a leading "+"; country code
+  // required — e.g. "917978381201") an admin sets in Team management.
+  // Presence of this field is what enrolls a user in WhatsApp notifications
+  // (whatsappService.js) — no separate opt-in flag, unlike PushSubscription
+  // which is browser-permission-driven instead.
+  phone        String?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
