@@ -2,6 +2,15 @@
 # (Cloudflare Pages' own mechanism for the same problem): react-router's
 # BrowserRouter (src/main.jsx) means every real route only exists in JS, so
 # a direct link or refresh on e.g. /dashboard 404s without this.
+#
+# .template + envsubst: the base nginx image renders this into
+# /etc/nginx/conf.d/default.conf at container startup, substituting
+# ${API_UPSTREAM} (set by detect-api-upstream.envsh, run just before) —
+# see that file for why a static `api:4000` hostname isn't reliable across
+# both deployment paths this app ships (docker-compose.yml vs CasaOS's
+# Custom Install). Only variables matching an actual environment variable
+# get substituted, so nginx's own runtime `$vars` (`$uri`, `$host`, ...)
+# below pass through untouched.
 server {
     listen 80;
     server_name _;
@@ -17,32 +26,17 @@ server {
     # JSON-parse failure) rather than the real cause.
     client_max_body_size 4m;
 
-    # Same-origin reverse proxy to the `api` service (docker-compose.yml's
-    # internal network — the hostname `api` only resolves inside that
-    # network, never from a browser). apps/web/src/services/api.js already
-    # calls paths like `/api/tasks`, so with VITE_API_URL left empty
-    # (docker-compose.yml's default) this makes the frontend work
-    # unmodified from *any* origin it's reached at — localhost, a LAN/
-    # Tailscale IP, or a real domain through a tunnel — without a rebuild
-    # per origin, and without the browser ever making a cross-origin
-    # request (so CORS_ORIGIN stops mattering for normal use; it's only a
-    # fallback for anyone hitting the api container's own published port
-    # directly).
+    # Same-origin reverse proxy to the api service. apps/web/src/services/
+    # api.js already calls paths like `/api/tasks`, so with VITE_API_URL
+    # left empty (docker-compose.yml's default) this makes the frontend
+    # work unmodified from *any* origin it's reached at — localhost, a
+    # LAN/Tailscale IP, or a real domain through a tunnel — without a
+    # rebuild per origin, and without the browser ever making a
+    # cross-origin request (so CORS_ORIGIN stops mattering for normal use;
+    # it's only a fallback for anyone hitting the api container's own
+    # published port directly).
     location /api/ {
-        # Force nginx to re-resolve `api` on every request instead of once
-        # at worker startup: a bare `proxy_pass http://api:4000` caches
-        # whatever IP Docker's embedded DNS (127.0.0.11) handed back at
-        # startup for this container's entire lifetime, so recreating just
-        # the `api` container (a new internal IP) leaves `web` stuck
-        # proxying to the old, now-dead address until `web` itself happens
-        # to restart too — the "nginx breaks on every update" symptom.
-        # Putting the upstream in a variable makes proxy_pass resolve it
-        # per-request via the `resolver` above, honoring its `valid` TTL,
-        # so a container update on either side is picked up within 10s
-        # with no manual restart.
-        resolver 127.0.0.11 valid=10s;
-        set $upstream_api http://api:4000;
-        proxy_pass $upstream_api;
+        proxy_pass http://${API_UPSTREAM};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

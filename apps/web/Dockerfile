@@ -43,6 +43,12 @@ COPY apps/web apps/web
 RUN npm run build -w web
 
 FROM nginx:1.27-alpine AS runtime
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+# .template (not conf.d directly): the base image's own entrypoint
+# renders this via envsubst at container startup — see
+# nginx.conf.template's own top comment and detect-api-upstream.envsh for
+# why the api upstream can't be a value baked in at build time.
+COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY apps/web/detect-api-upstream.envsh /docker-entrypoint.d/05-detect-api-upstream.envsh
+RUN chmod +x /docker-entrypoint.d/05-detect-api-upstream.envsh
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 EXPOSE 80
