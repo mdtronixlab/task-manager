@@ -1,0 +1,40 @@
+#!/bin/sh
+# Sourced by the base nginx image's docker-entrypoint.sh (the .envsh
+# naming makes it run in-process, before 20-envsubst-on-templates.sh, so
+# the export below reaches that script's environment) to determine where
+# `api` actually is, since a static hostname doesn't reliably work here:
+#
+#   - Plain `docker compose up` (docker-compose.yml) creates a project
+#     network with `api` as a DNS alias — `api:4000` resolves fine there.
+#   - CasaOS's own "Custom Install" path (docker-compose.casaos.yml,
+#     pasted into its UI) has been observed to skip creating that shared
+#     network/alias entirely and just run each service on the plain
+#     default `bridge` network — `api` never resolves there, and neither
+#     does Docker's embedded DNS itself (127.0.0.11 isn't reachable on
+#     the default bridge), so nginx can't reach the api container at all
+#     under that deployment path (confirmed live 2026-09-11: every
+#     request failed "api could not be resolved").
+#
+# Both compose files publish api's port straight to the host
+# (`4000:4000`), and a container's own default gateway is always a host
+# -side interface — the bridge Docker created it on — so proxying through
+# that address reaches api's published port regardless of which network
+# topology this particular deployment ended up with. It also keeps
+# working if `api` alone gets recreated later (a fresh internal IP): the
+# gateway address doesn't change, Docker's NAT just forwards :4000 to
+# whichever container currently holds it — the exact case that broke
+# nginx before (proxy_pass caching a now-dead IP until `web` restarted
+# too).
+gw_hex=$(awk '$2 == "00000000" { print $3; exit }' /proc/net/route)
+if [ -n "$gw_hex" ]; then
+  b1=$(printf '%s' "$gw_hex" | cut -c1-2)
+  b2=$(printf '%s' "$gw_hex" | cut -c3-4)
+  b3=$(printf '%s' "$gw_hex" | cut -c5-6)
+  b4=$(printf '%s' "$gw_hex" | cut -c7-8)
+  export API_UPSTREAM="$(printf '%d.%d.%d.%d' "0x$b4" "0x$b3" "0x$b2" "0x$b1"):4000"
+else
+  # No default route found (shouldn't happen inside a container) — fall
+  # back to the plain compose service-name hostname rather than leaving
+  # API_UPSTREAM unset and breaking template substitution outright.
+  export API_UPSTREAM="api:4000"
+fi
