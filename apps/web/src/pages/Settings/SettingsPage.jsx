@@ -1,5 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Upload, Download, DatabaseBackup, Trash2, UserPlus, FolderPlus, Tag, Pencil, MessageCircle } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import {
+  Upload,
+  Download,
+  DatabaseBackup,
+  Trash2,
+  UserPlus,
+  FolderPlus,
+  Tag,
+  Pencil,
+  MessageCircle,
+  Image,
+  Users,
+  Building2,
+  Send,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useBranding } from '../../context/BrandingContext'
 import { useToast } from '../../context/ToastContext'
@@ -19,6 +36,7 @@ import UserFormModal from '../../components/users/UserFormModal'
 import DepartmentFormModal from '../../components/departments/DepartmentFormModal'
 import CategoryFormModal from '../../components/categories/CategoryFormModal'
 import NotificationComposerCard from '../../components/notifications/NotificationComposerCard'
+import WhatsAppSettingsCard from '../../components/settings/WhatsAppSettingsCard'
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
@@ -80,6 +98,67 @@ function TestWhatsAppButton({ onClick, label, busy }) {
   )
 }
 
+// The Settings hub — one tile per section below, `?section=<id>` in the URL
+// picks which one's full content actually renders (see SettingsPage) rather
+// than showing all six stacked at once. Order here is the grid's order.
+const SETTINGS_SECTIONS = [
+  { id: 'branding', label: 'Branding', description: 'Logo shown in the header.', icon: Image, tone: 'primary' },
+  { id: 'team', label: 'Team', description: 'Users, roles, and WhatsApp numbers.', icon: Users, tone: 'success' },
+  { id: 'departments', label: 'Departments', description: 'Group staff and filter reports.', icon: Building2, tone: 'warning' },
+  { id: 'categories', label: 'Categories', description: 'Classify tasks in the Add Task form.', icon: Tag, tone: 'neutral' },
+  { id: 'database', label: 'Database', description: 'Backup and restore the live data.', icon: DatabaseBackup, tone: 'error' },
+  { id: 'notify', label: 'Send Notification', description: 'Push a custom message to staff.', icon: Send, tone: 'primary' },
+  { id: 'whatsapp', label: 'WhatsApp', description: 'Connection status and message templates.', icon: MessageCircle, tone: 'success' },
+]
+
+const TILE_TONE_CLASSES = {
+  neutral: 'bg-tone-neutral-bg text-tone-neutral-text',
+  warning: 'bg-tone-warning-bg text-tone-warning-text',
+  primary: 'bg-tone-primary-bg text-tone-primary-text',
+  success: 'bg-tone-success-bg text-tone-success-text',
+  error: 'bg-tone-error-bg text-tone-error-text',
+}
+
+/** Small "N active" line under a hub tile, once Team/Departments/Categories data has loaded — null for sections with no natural count. */
+function sectionMeta(sectionId, { users, departments, categories }) {
+  switch (sectionId) {
+    case 'team':
+      return `${users.filter((u) => u.active).length} active`
+    case 'departments':
+      return `${departments.filter((d) => d.active).length} active`
+    case 'categories':
+      return `${categories.filter((c) => c.active).length} active`
+    default:
+      return null
+  }
+}
+
+/** One Settings hub tile — clicking it opens that section's full card (SettingsPage's activeSection). */
+function SettingsSectionCard({ section, meta, onClick }) {
+  const Icon = section.icon
+  return (
+    <Card
+      as="button"
+      type="button"
+      interactive
+      onClick={onClick}
+      className="flex w-full items-start gap-4 p-5 text-left"
+    >
+      <span
+        className={`flex size-11 shrink-0 items-center justify-center rounded-full ${TILE_TONE_CLASSES[section.tone]}`}
+      >
+        <Icon className="size-5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-body-lg font-headline font-semibold text-on-surface">{section.label}</p>
+        <p className="text-body-sm text-on-surface-variant">{section.description}</p>
+        {meta && <p className="mt-1 text-label-sm font-label uppercase text-on-surface-variant">{meta}</p>}
+      </div>
+      <ChevronRight className="size-5 shrink-0 text-on-surface-variant" aria-hidden="true" />
+    </Card>
+  )
+}
+
 // architecture.md §2 /settings route — Branding, Team, Departments,
 // Categories, and the notification composer. Every management table here
 // supports add + edit (including reactivating/deactivating) — a Super
@@ -90,6 +169,16 @@ export default function SettingsPage() {
   const { appUser } = useAuth()
   const { logoUrl, applicationName, refresh } = useBranding()
   const { showToast } = useToast()
+
+  // Which section's full content is open, driven by ?section= so it's
+  // linkable/back-button-friendly rather than plain component state — the
+  // hub (grid of SettingsSectionCard tiles) shows when this is unset.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeSection = searchParams.get('section')
+  const activeSectionDef = SETTINGS_SECTIONS.find((s) => s.id === activeSection) || null
+  const openSection = (id) => setSearchParams({ section: id })
+  const closeSection = () => setSearchParams({}, { replace: true })
+
   const [preview, setPreview] = useState(null)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -372,295 +461,336 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-headline-lg font-headline text-on-surface">Settings</h1>
+        {/* activeSection (not activeSectionDef) — an unrecognised ?section= value still
+            needs a way back to the hub, not just a blank "Settings" page. */}
+        {activeSection ? (
+          <button
+            type="button"
+            onClick={closeSection}
+            className="mb-2 flex items-center gap-1 text-body-sm font-medium text-primary hover:underline"
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            Back to Settings
+          </button>
+        ) : null}
+        <h1 className="text-headline-lg font-headline text-on-surface">
+          {activeSectionDef ? activeSectionDef.label : 'Settings'}
+        </h1>
         <p className="text-body-md text-on-surface-variant">{applicationName}</p>
       </div>
 
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle>Branding</CardTitle>
-          <CardDescription>
-            Replace the default mark with your organisation&rsquo;s logo. PNG, JPEG, WEBP, or SVG
-            — up to 2MB. Shown in the header for every signed-in user.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-low p-2">
-              {preview ? (
-                <img src={preview} alt="New logo preview" className="max-h-full max-w-full object-contain" />
-              ) : (
-                <Logo showWordmark={false} size="lg" />
-              )}
-            </div>
-            <div className="flex flex-col items-start gap-2">
-              <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="size-4" aria-hidden="true" />
-                Choose image
-              </Button>
-              {logoUrl && !preview && (
-                <Button variant="ghost" size="sm" onClick={handleRemove} loading={removing} loadingText="Removing…">
-                  <Trash2 className="size-4" aria-hidden="true" />
-                  Remove custom logo
-                </Button>
-              )}
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPTED_TYPES.join(',')}
-              onChange={handleFileChange}
-              className="hidden"
+      {!activeSection && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {SETTINGS_SECTIONS.map((section) => (
+            <SettingsSectionCard
+              key={section.id}
+              section={section}
+              meta={!teamLoading ? sectionMeta(section.id, { users, departments, categories }) : null}
+              onClick={() => openSection(section.id)}
             />
-          </div>
+          ))}
+        </div>
+      )}
 
-          {error && (
-            <p role="alert" className="rounded-md bg-tone-error-bg px-3 py-2 text-body-sm text-tone-error-text">
-              {error}
-            </p>
-          )}
-        </CardContent>
-        {preview && (
-          <CardFooter>
-            <Button variant="secondary" onClick={handleCancelPreview} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} loading={saving} loadingText="Saving…">
-              Save logo
-            </Button>
-          </CardFooter>
-        )}
-      </Card>
-
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle>Team</CardTitle>
-              <CardDescription>
-                Registered users — sign-in is Google only, so adding someone here just
-                pre-authorizes their email; there&rsquo;s nothing else for them to set up.
-              </CardDescription>
+      {activeSection === 'branding' && (
+        <Card className="max-w-xl">
+          <CardHeader>
+            <CardTitle>Branding</CardTitle>
+            <CardDescription>
+              Replace the default mark with your organisation&rsquo;s logo. PNG, JPEG, WEBP, or SVG
+              — up to 2MB. Shown in the header for every signed-in user.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-low p-2">
+                {preview ? (
+                  <img src={preview} alt="New logo preview" className="max-h-full max-w-full object-contain" />
+                ) : (
+                  <Logo showWordmark={false} size="lg" />
+                )}
+              </div>
+              <div className="flex flex-col items-start gap-2">
+                <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="size-4" aria-hidden="true" />
+                  Choose image
+                </Button>
+                {logoUrl && !preview && (
+                  <Button variant="ghost" size="sm" onClick={handleRemove} loading={removing} loadingText="Removing…">
+                    <Trash2 className="size-4" aria-hidden="true" />
+                    Remove custom logo
+                  </Button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_TYPES.join(',')}
+                onChange={handleFileChange}
+                className="hidden"
+              />
             </div>
-            <Button size="sm" onClick={openAddUser} className="shrink-0">
-              <UserPlus className="size-4" aria-hidden="true" />
-              Add user
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {teamLoading ? (
-            <LoadingState label="Loading team…" />
-          ) : teamError ? (
-            <ErrorState description={teamError} onRetry={loadTeam} />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>WhatsApp</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((u) => {
-                  const isSelf = u.userId === appUser?.userId
-                  return (
-                    <TableRow key={u.userId}>
-                      <TableCell className="font-medium text-on-surface">{u.name}</TableCell>
-                      <TableCell className="text-on-surface-variant">{u.email}</TableCell>
+
+            {error && (
+              <p role="alert" className="rounded-md bg-tone-error-bg px-3 py-2 text-body-sm text-tone-error-text">
+                {error}
+              </p>
+            )}
+          </CardContent>
+          {preview && (
+            <CardFooter>
+              <Button variant="secondary" onClick={handleCancelPreview} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} loading={saving} loadingText="Saving…">
+                Save logo
+              </Button>
+            </CardFooter>
+          )}
+        </Card>
+      )}
+
+      {activeSection === 'team' && (
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle>Team</CardTitle>
+                <CardDescription>
+                  Registered users — sign-in is Google only, so adding someone here just
+                  pre-authorizes their email; there&rsquo;s nothing else for them to set up.
+                </CardDescription>
+              </div>
+              <Button size="sm" onClick={openAddUser} className="shrink-0">
+                <UserPlus className="size-4" aria-hidden="true" />
+                Add user
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {teamLoading ? (
+              <LoadingState label="Loading team…" />
+            ) : teamError ? (
+              <ErrorState description={teamError} onRetry={loadTeam} />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>WhatsApp</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u) => {
+                    const isSelf = u.userId === appUser?.userId
+                    return (
+                      <TableRow key={u.userId}>
+                        <TableCell className="font-medium text-on-surface">{u.name}</TableCell>
+                        <TableCell className="text-on-surface-variant">{u.email}</TableCell>
+                        <TableCell>
+                          <Badge tone={roleBadgeTone(u.role)}>{ROLE_LABELS[u.role] || u.role}</Badge>
+                        </TableCell>
+                        <TableCell className="text-on-surface-variant">
+                          {u.departmentId ? departmentsById[u.departmentId] || '—' : '—'}
+                        </TableCell>
+                        <TableCell>
+                          {u.phone ? (
+                            <Badge tone="success">{u.phone}</Badge>
+                          ) : (
+                            <span className="text-on-surface-variant">Not set</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge tone={u.active ? 'success' : 'neutral'}>{u.active ? 'Active' : 'Inactive'}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {u.phone && (
+                              <TestWhatsAppButton
+                                onClick={() => handleTestWhatsApp(u)}
+                                label={`Send test WhatsApp to ${u.name}`}
+                                busy={testingWhatsAppUserId === u.userId}
+                              />
+                            )}
+                            <EditButton onClick={() => openEditUser(u)} label={`Edit ${u.name}`} />
+                            {/* Deactivating yourself or an already-inactive account is a no-op the
+                                backend rejects (or has nothing to do) — same isSelf guard as
+                                updateUser's own "can't deactivate your own account" check. */}
+                            {!isSelf && u.active && (
+                              <DeleteButton onClick={() => setDeletingUser(u)} label={`Delete ${u.name}`} />
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {activeSection === 'departments' && (
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle>Departments</CardTitle>
+                <CardDescription>Used to group staff and filter tasks/reports by team.</CardDescription>
+              </div>
+              <Button size="sm" onClick={openAddDepartment} className="shrink-0">
+                <FolderPlus className="size-4" aria-hidden="true" />
+                Add department
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {teamLoading ? (
+              <LoadingState label="Loading departments…" />
+            ) : teamError ? (
+              <ErrorState description={teamError} onRetry={loadTeam} />
+            ) : departments.length === 0 ? (
+              <p className="text-body-sm text-on-surface-variant">No departments yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Edit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {departments.map((d) => (
+                    <TableRow key={d.departmentId}>
+                      <TableCell className="font-medium text-on-surface">{d.name}</TableCell>
+                      <TableCell className="text-on-surface-variant">{d.description || '—'}</TableCell>
                       <TableCell>
-                        <Badge tone={roleBadgeTone(u.role)}>{ROLE_LABELS[u.role] || u.role}</Badge>
-                      </TableCell>
-                      <TableCell className="text-on-surface-variant">
-                        {u.departmentId ? departmentsById[u.departmentId] || '—' : '—'}
-                      </TableCell>
-                      <TableCell>
-                        {u.phone ? (
-                          <Badge tone="success">{u.phone}</Badge>
-                        ) : (
-                          <span className="text-on-surface-variant">Not set</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge tone={u.active ? 'success' : 'neutral'}>{u.active ? 'Active' : 'Inactive'}</Badge>
+                        <Badge tone={d.active ? 'success' : 'neutral'}>{d.active ? 'Active' : 'Inactive'}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {u.phone && (
-                            <TestWhatsAppButton
-                              onClick={() => handleTestWhatsApp(u)}
-                              label={`Send test WhatsApp to ${u.name}`}
-                              busy={testingWhatsAppUserId === u.userId}
-                            />
-                          )}
-                          <EditButton onClick={() => openEditUser(u)} label={`Edit ${u.name}`} />
-                          {/* Deactivating yourself or an already-inactive account is a no-op the
-                              backend rejects (or has nothing to do) — same isSelf guard as
-                              updateUser's own "can't deactivate your own account" check. */}
-                          {!isSelf && u.active && (
-                            <DeleteButton onClick={() => setDeletingUser(u)} label={`Delete ${u.name}`} />
-                          )}
-                        </div>
+                        <EditButton onClick={() => openEditDepartment(d)} label={`Edit ${d.name}`} />
                       </TableCell>
                     </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle>Departments</CardTitle>
-              <CardDescription>Used to group staff and filter tasks/reports by team.</CardDescription>
+      {activeSection === 'categories' && (
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle>Categories</CardTitle>
+                <CardDescription>Used to classify tasks — shown in the Add Task category picker.</CardDescription>
+              </div>
+              <Button size="sm" onClick={openAddCategory} className="shrink-0">
+                <Tag className="size-4" aria-hidden="true" />
+                Add category
+              </Button>
             </div>
-            <Button size="sm" onClick={openAddDepartment} className="shrink-0">
-              <FolderPlus className="size-4" aria-hidden="true" />
-              Add department
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {teamLoading ? (
-            <LoadingState label="Loading departments…" />
-          ) : teamError ? (
-            <ErrorState description={teamError} onRetry={loadTeam} />
-          ) : departments.length === 0 ? (
-            <p className="text-body-sm text-on-surface-variant">No departments yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Edit</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {departments.map((d) => (
-                  <TableRow key={d.departmentId}>
-                    <TableCell className="font-medium text-on-surface">{d.name}</TableCell>
-                    <TableCell className="text-on-surface-variant">{d.description || '—'}</TableCell>
-                    <TableCell>
-                      <Badge tone={d.active ? 'success' : 'neutral'}>{d.active ? 'Active' : 'Inactive'}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <EditButton onClick={() => openEditDepartment(d)} label={`Edit ${d.name}`} />
-                    </TableCell>
+          </CardHeader>
+          <CardContent>
+            {teamLoading ? (
+              <LoadingState label="Loading categories…" />
+            ) : teamError ? (
+              <ErrorState description={teamError} onRetry={loadTeam} />
+            ) : categories.length === 0 ? (
+              <p className="text-body-sm text-on-surface-variant">No categories yet.</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Edit</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {categories.map((c) => (
+                    <TableRow key={c.categoryId}>
+                      <TableCell className="font-medium text-on-surface">{c.name}</TableCell>
+                      <TableCell className="text-on-surface-variant">{c.description || '—'}</TableCell>
+                      <TableCell>
+                        <Badge tone={c.active ? 'success' : 'neutral'}>{c.active ? 'Active' : 'Inactive'}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <EditButton onClick={() => openEditCategory(c)} label={`Edit ${c.name}`} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <CardTitle>Categories</CardTitle>
-              <CardDescription>Used to classify tasks — shown in the Add Task category picker.</CardDescription>
+      {activeSection === 'database' && (
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <CardTitle>Database</CardTitle>
+            <CardDescription>
+              Download a full backup of the live database, or restore one — restoring replaces
+              every current task, user, and setting, so use it carefully.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleDownloadBackup}
+                loading={backingUp}
+                loadingText="Preparing…"
+              >
+                <Download className="size-4" aria-hidden="true" />
+                Download backup
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => restoreInputRef.current?.click()}>
+                <DatabaseBackup className="size-4" aria-hidden="true" />
+                Restore from backup…
+              </Button>
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept=".db"
+                onChange={handleRestoreFileChosen}
+                className="hidden"
+              />
             </div>
-            <Button size="sm" onClick={openAddCategory} className="shrink-0">
-              <Tag className="size-4" aria-hidden="true" />
-              Add category
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {teamLoading ? (
-            <LoadingState label="Loading categories…" />
-          ) : teamError ? (
-            <ErrorState description={teamError} onRetry={loadTeam} />
-          ) : categories.length === 0 ? (
-            <p className="text-body-sm text-on-surface-variant">No categories yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Edit</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map((c) => (
-                  <TableRow key={c.categoryId}>
-                    <TableCell className="font-medium text-on-surface">{c.name}</TableCell>
-                    <TableCell className="text-on-surface-variant">{c.description || '—'}</TableCell>
-                    <TableCell>
-                      <Badge tone={c.active ? 'success' : 'neutral'}>{c.active ? 'Active' : 'Inactive'}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <EditButton onClick={() => openEditCategory(c)} label={`Edit ${c.name}`} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+            {restoreStarted && (
+              <p className="rounded-md bg-tone-warning-bg px-3 py-2 text-body-sm text-tone-warning-text">
+                Database restored — the server is restarting. This page will reload automatically
+                in a few seconds.
+              </p>
+            )}
+            {backupError && (
+              <p role="alert" className="rounded-md bg-tone-error-bg px-3 py-2 text-body-sm text-tone-error-text">
+                {backupError}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="max-w-2xl">
-        <CardHeader>
-          <CardTitle>Database</CardTitle>
-          <CardDescription>
-            Download a full backup of the live database, or restore one — restoring replaces
-            every current task, user, and setting, so use it carefully.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleDownloadBackup}
-              loading={backingUp}
-              loadingText="Preparing…"
-            >
-              <Download className="size-4" aria-hidden="true" />
-              Download backup
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => restoreInputRef.current?.click()}>
-              <DatabaseBackup className="size-4" aria-hidden="true" />
-              Restore from backup…
-            </Button>
-            <input
-              ref={restoreInputRef}
-              type="file"
-              accept=".db"
-              onChange={handleRestoreFileChosen}
-              className="hidden"
-            />
-          </div>
-          {restoreStarted && (
-            <p className="rounded-md bg-tone-warning-bg px-3 py-2 text-body-sm text-tone-warning-text">
-              Database restored — the server is restarting. This page will reload automatically
-              in a few seconds.
-            </p>
-          )}
-          {backupError && (
-            <p role="alert" className="rounded-md bg-tone-error-bg px-3 py-2 text-body-sm text-tone-error-text">
-              {backupError}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {activeSection === 'notify' && !teamLoading && !teamError && (
+        <NotificationComposerCard users={users} departments={departments} />
+      )}
 
-      {!teamLoading && !teamError && <NotificationComposerCard users={users} departments={departments} />}
+      {activeSection === 'whatsapp' && <WhatsAppSettingsCard />}
 
       <UserFormModal
         open={userModalOpen}

@@ -31,14 +31,20 @@ model User {
   // (whatsappService.js) — no separate opt-in flag, unlike PushSubscription
   // which is browser-permission-driven instead.
   phone        String?
+  // Comma-separated day codes from config.js's WEEKDAYS (e.g. "SUN,SAT") —
+  // this person's regular days off. whatsappService.js's sendToUser skips
+  // every automatic/broadcast send (not a Super Admin's manual test) on a
+  // day listed here. null/empty = no weekly off.
+  weeklyOff    String?
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  department        Department?        @relation(fields: [departmentId], references: [departmentId])
-  tasks             Task[]
-  activityLogs      ActivityLog[]
-  pushSubscriptions PushSubscription[]
+  department          Department?          @relation(fields: [departmentId], references: [departmentId])
+  tasks               Task[]
+  activityLogs        ActivityLog[]
+  pushSubscriptions   PushSubscription[]
+  whatsAppMessageLogs WhatsAppMessageLog[]
 
   @@map("users")
 }
@@ -147,6 +153,33 @@ model PushSubscription {
   user User @relation(fields: [userId], references: [userId])
 
   @@map("push_subscriptions")
+}
+
+// One row per outbound WhatsApp send attempt (whatsappService.js's
+// sendToUser) — sent or failed, whichever it was. Settings > WhatsApp's
+// "Recent messages" log reads this so delivery status is visible in the
+// app instead of only ever reaching the server console (whatsappService.js
+// previously only console.error'd a failure).
+//
+// "Delivered"/"read" WhatsApp receipts aren't tracked here — OpenWA's HTTP
+// response only confirms the send request itself succeeded or failed, not
+// what happens to it after; status is SENT (request accepted) or FAILED
+// (OpenWA/HTTP error, or no usable number).
+model WhatsAppMessageLog {
+  id         Int      @id @default(autoincrement())
+  logId      String   @unique
+  userId     String
+  phone      String
+  kind       String
+  templateId String?
+  status     String
+  error      String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [userId])
+
+  @@map("whatsapp_message_logs")
+  @@index([createdAt])
 }
 
 // Backs generateId() (src/lib/ids.js) — a dedicated counters table instead

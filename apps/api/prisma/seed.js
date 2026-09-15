@@ -12,7 +12,16 @@ const prisma = new PrismaClient();
 async function seedDefaultSettings() {
   const defaults = [
     { key: 'APPLICATION_NAME', value: 'Organisation Task Manager', description: 'Application display name' },
-    { key: 'TIMEZONE', value: Intl.DateTimeFormat().resolvedOptions().timeZone, description: 'Organisation default timezone (IANA name)' },
+    // Hardcoded rather than Intl.DateTimeFormat().resolvedOptions().timeZone
+    // (the process's own OS timezone) — that resolved to UTC on every real
+    // deployment so far, since a bare Docker container defaults to UTC
+    // unless a TZ env var or /etc/localtime mount says otherwise, which
+    // silently pushed every timezone-anchored reminder (taskReminderService,
+    // taskDueReminderService, taskCompletionReminderService) hours off from
+    // the org's actual morning/evening. This deployment is India-only
+    // (whatsappService.js's toChatId has the same assumption baked in), so
+    // Asia/Kolkata is the correct default outright, not just a fallback.
+    { key: 'TIMEZONE', value: 'Asia/Kolkata', description: 'Organisation default timezone (IANA name)' },
   ];
 
   for (const setting of defaults) {

@@ -14,7 +14,7 @@ import { requireString } from '../lib/validate.js';
 import { ValidationError, AppError } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
 import { resolveNotificationTargets } from '../lib/notificationTargets.js';
-import { sendCustomWhatsAppBroadcast } from './whatsappService.js';
+import { sendCustomWhatsAppBroadcast, sendCustomWhatsAppTemplateBroadcast } from './whatsappService.js';
 
 let configured = false;
 function ensureConfigured() {
@@ -124,13 +124,29 @@ async function sendToUser(userId, payload) {
  * logs an activity entry (rules.md §26 — administrative operations are
  * logged) rather than using a fixed message.
  *
- * `sendWhatsApp: true` additionally fans the same title/body out over
+ * `sendWhatsApp: true` additionally fans a WhatsApp message out over
  * WhatsApp (whatsappService.js) to whichever of the resolved recipients
  * have a phone number on file — push itself always fires regardless, so
- * this is strictly an extra channel on top, not an alternative to it.
+ * this is strictly an extra channel on top, not an alternative to it. By
+ * default that WhatsApp message just mirrors title/body (plain text); a
+ * Super Admin can instead pass `whatsappTemplateId` (an OpenWA Templates
+ * entry's id, Sessions > Templates in its own dashboard) plus `whatsappVars`
+ * to send an OpenWA-authored template instead — the only way to reach a
+ * number outside WhatsApp's 24-hour session window, which restricts
+ * business-initiated messages to templates.
+ * @param {object} params
+ * @param {string} params.title
+ * @param {string} params.body
+ * @param {object} params.target
+ * @param {boolean} [params.sendWhatsApp]
+ * @param {string} [params.whatsappTemplateId]
+ * @param {Record<string, string>} [params.whatsappVars]
  * @return {Promise<{targetCount: number, notified: number, whatsappNotified?: number}>}
  */
-export async function sendCustomNotification(currentUser, { title, body, target, sendWhatsApp }) {
+export async function sendCustomNotification(
+  currentUser,
+  { title, body, target, sendWhatsApp, whatsappTemplateId, whatsappVars },
+) {
   ensureConfigured();
   const notifTitle = requireString(title, 'title', 120);
   const notifBody = requireString(body, 'body', 500);
@@ -145,8 +161,13 @@ export async function sendCustomNotification(currentUser, { title, body, target,
   );
   const notified = results.filter((r) => r.status === 'fulfilled' && r.value.sent > 0).length;
 
+  const templateId = whatsappTemplateId?.trim() || null;
   const whatsappNotified = sendWhatsApp
-    ? (await sendCustomWhatsAppBroadcast(recipients, notifTitle, notifBody)).notified
+    ? (
+        await (templateId
+          ? sendCustomWhatsAppTemplateBroadcast(recipients, templateId, whatsappVars)
+          : sendCustomWhatsAppBroadcast(recipients, notifTitle, notifBody))
+      ).notified
     : undefined;
 
   await logActivity(
@@ -156,7 +177,12 @@ export async function sendCustomNotification(currentUser, { title, body, target,
     'title',
     null,
     notifTitle,
-    { targetScope: target?.scope, targetCount: recipients.length, notified, ...(sendWhatsApp ? { whatsappNotified } : {}) },
+    {
+      targetScope: target?.scope,
+      targetCount: recipients.length,
+      notified,
+      ...(sendWhatsApp ? { whatsappNotified, whatsappTemplateId: templateId || undefined } : {}),
+    },
   );
 
   return { targetCount: recipients.length, notified, whatsappNotified };

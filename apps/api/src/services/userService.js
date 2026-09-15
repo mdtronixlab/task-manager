@@ -4,12 +4,12 @@
 // covers it and logs USER_DISABLED specifically when it flips off).
 
 import { prisma } from '../db.js';
-import { ROLES, ACTIVITY_ACTIONS } from '../config.js';
+import { ROLES, ACTIVITY_ACTIONS, WEEKDAYS } from '../config.js';
 import { generateUserId } from '../lib/ids.js';
 import { requireString, requireEnum } from '../lib/validate.js';
 import { ValidationError, Forbidden, NotFound } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
-import { sendTestWhatsAppMessage } from './whatsappService.js';
+import { sendTestWhatsAppMessage, sendWelcomeWhatsApp, isWhatsAppConfigured } from './whatsappService.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Digits only, optional leading "+", 7-15 of them — loose enough to catch
@@ -39,6 +39,44 @@ function normalizePhoneOrNull(value) {
   return digits.length === 10 ? `${INDIA_COUNTRY_CODE}${digits}` : digits;
 }
 
+/**
+ * `['SUN', 'SAT']` (from Team management's weekly-off checkboxes) <->
+ * `"SUN,SAT"` (User.weeklyOff). `undefined`/`[]` both mean "no weekly off"
+ * and normalize to `null`, matching normalizePhoneOrNull's "empty clears
+ * it" shape.
+ */
+function normalizeWeeklyOffOrNull(value) {
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value)) {
+    throw ValidationError('weeklyOff must be a list of day codes.');
+  }
+  const days = [...new Set(value)];
+  for (const day of days) {
+    if (!WEEKDAYS.includes(day)) {
+      throw ValidationError(`"${day}" is not a valid day — use one of ${WEEKDAYS.join(', ')}.`);
+    }
+  }
+  return days.length > 0 ? days.join(',') : null;
+}
+
+/**
+ * Best-effort welcome WhatsApp for a user who just got a (new) number on
+ * file — called from createUser (phone set at creation) and updateUser
+ * (phone added or changed to a different one). Never blocks or fails its caller:
+ * skips quietly when WhatsApp isn't configured at all (same
+ * check-before-call pattern as taskReminderService's sweep, so a server
+ * without OpenWA set up doesn't log a "not configured" error on every
+ * single user add), and any real send failure is logged, not thrown.
+ */
+async function notifyWelcome(user) {
+  if (!isWhatsAppConfigured()) return;
+  try {
+    await sendWelcomeWhatsApp(user);
+  } catch (err) {
+    console.error(`[userService] welcome WhatsApp failed for ${user.userId}:`, err.message);
+  }
+}
+
 function shapeUser(u) {
   return {
     userId: u.userId,
@@ -49,6 +87,7 @@ function shapeUser(u) {
     designation: u.designation,
     avatar: u.avatar,
     phone: u.phone,
+    weeklyOff: u.weeklyOff ? u.weeklyOff.split(',') : [],
     active: u.active,
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
@@ -75,7 +114,7 @@ export function getCurrentUser(currentUser) {
  *
  * @param {object} currentUser The admin performing this action (for the
  *   activity log). Super Admin only — enforced by requireRole in the route.
- * @param {object} data {name, email, role, departmentId?, designation?}
+ * @param {object} data {name, email, role, departmentId?, designation?, phone?, weeklyOff?}
  */
 export async function createUser(currentUser, data = {}) {
   const name = requireString(data.name, 'Name', 100);
@@ -87,6 +126,7 @@ export async function createUser(currentUser, data = {}) {
   const designation =
     typeof data.designation === 'string' && data.designation.trim() ? data.designation.trim().slice(0, 100) : null;
   const phone = normalizePhoneOrNull(data.phone);
+  const weeklyOff = normalizeWeeklyOffOrNull(data.weeklyOff);
 
   let departmentId = null;
   if (data.departmentId) {
@@ -109,11 +149,19 @@ export async function createUser(currentUser, data = {}) {
       departmentId,
       designation,
       phone,
+      weeklyOff,
       active: true,
     },
   });
 
   await logActivity(currentUser.userId, null, 'USER_CREATED', 'email', null, email, { role });
+
+  // Added with a number on file from the start, so this is their very first
+  // WhatsApp contact — same trigger as updateUser giving an existing user
+  // their first number below. Awaited (like taskService.js's task-assigned
+  // notification) so a slow/failed send never throws past notifyWelcome's
+  // own catch, but still completes before the request responds.
+  if (phone) await notifyWelcome(user);
 
   return shapeUser(user);
 }
@@ -129,7 +177,7 @@ export async function createUser(currentUser, data = {}) {
  * @param {object} currentUser The admin performing this action. Super
  *   Admin only — enforced by requireRole in the route.
  * @param {string} userId
- * @param {object} data {name?, role?, departmentId?, designation?, active?}
+ * @param {object} data {name?, role?, departmentId?, designation?, phone?, weeklyOff?, active?}
  */
 export async function updateUser(currentUser, userId, data = {}) {
   requireString(userId, 'userId');
@@ -178,6 +226,12 @@ export async function updateUser(currentUser, userId, data = {}) {
     updates.phone = phone;
   }
 
+  if (data.weeklyOff !== undefined) {
+    const weeklyOff = normalizeWeeklyOffOrNull(data.weeklyOff);
+    if (weeklyOff !== user.weeklyOff) changedFields.push(['weeklyOff', user.weeklyOff, weeklyOff]);
+    updates.weeklyOff = weeklyOff;
+  }
+
   if (data.active !== undefined) {
     const active = Boolean(data.active);
     if (isSelf && !active) {
@@ -188,6 +242,14 @@ export async function updateUser(currentUser, userId, data = {}) {
   }
 
   const updated = await prisma.user.update({ where: { userId }, data: updates });
+
+  // Any edit that leaves a real number on file — added where there wasn't
+  // one, or corrected to a different one — re-sends the welcome message,
+  // since either way it's the first message *that number* has had from us.
+  // Only clearing the number (newValue falsy) skips it, since there's
+  // nowhere left to send it.
+  const phoneChange = changedFields.find(([field]) => field === 'phone');
+  if (phoneChange && phoneChange[2]) await notifyWelcome(updated);
 
   for (const [field, oldValue, newValue] of changedFields) {
     if (field === 'active' && newValue === false) {

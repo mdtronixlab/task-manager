@@ -32,3 +32,4 @@ export const generateCategoryId = () => generateId(ID_PREFIX.CATEGORY, 'CATEGORY
 export const generateDepartmentId = () => generateId(ID_PREFIX.DEPARTMENT, 'DEPARTMENT');
 export const generateLogId = () => generateId(ID_PREFIX.LOG, 'LOG');
 export const generatePushSubscriptionId = () => generateId(ID_PREFIX.PUSH_SUBSCRIPTION, 'PUSH_SUBSCRIPTION');
+export const generateWhatsAppMessageLogId = () => generateId(ID_PREFIX.WHATSAPP_MESSAGE, 'WHATSAPP_MESSAGE');

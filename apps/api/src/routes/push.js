@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ROLES } from '../config.js';
+import { ROLES, config } from '../config.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { success } from '../lib/response.js';
 import {
@@ -12,6 +12,8 @@ import {
 import { runTaskReminderSweep } from '../services/taskReminderService.js';
 import { runTaskCompletionReminderSweep } from '../services/taskCompletionReminderService.js';
 import { runTaskDueReminderSweep } from '../services/taskDueReminderService.js';
+import { listWhatsAppTemplates, getWhatsAppDeliveryStatus, isWhatsAppConfigured } from '../services/whatsappService.js';
+import { getWhatsAppTemplateSettings, updateWhatsAppTemplateSettings } from '../services/whatsappSettingsService.js';
 
 const router = Router();
 
@@ -51,13 +53,20 @@ router.post('/test', async (req, res, next) => {
 });
 
 // A Super Admin's free-form broadcast — { title, body, target: { scope:
-// 'ALL'|'DEPARTMENT'|'USER', departmentId?, userId? }, sendWhatsApp? }.
-// sendCustomNotification validates the payload and resolves recipients
-// itself; sendWhatsApp additionally fans it out over WhatsApp.
+// 'ALL'|'DEPARTMENT'|'USERS', departmentId?, userIds? }, sendWhatsApp?,
+// whatsappTemplateId?, whatsappVars? }. sendCustomNotification validates the
+// payload and resolves recipients itself; sendWhatsApp additionally fans it
+// out over WhatsApp, as a template instead of plain text when
+// whatsappTemplateId is set.
 router.post('/send', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
-    const { title, body, target, sendWhatsApp } = req.body;
-    res.json(success(await sendCustomNotification(req.user, { title, body, target, sendWhatsApp }), 'Notification sent.'));
+    const { title, body, target, sendWhatsApp, whatsappTemplateId, whatsappVars } = req.body;
+    res.json(
+      success(
+        await sendCustomNotification(req.user, { title, body, target, sendWhatsApp, whatsappTemplateId, whatsappVars }),
+        'Notification sent.',
+      ),
+    );
   } catch (err) {
     next(err);
   }
@@ -91,6 +100,62 @@ router.post('/task-completion-reminder-sweep', requireRole(ROLES.SUPER_ADMIN), a
 router.post('/task-due-reminder-sweep', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
     res.json(success(await runTaskDueReminderSweep(), 'Task due-reminder sweep run.'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Backs the custom-broadcast composer's template picker (NotificationComposerCard.jsx)
+// — same OPENWA_NOT_CONFIGURED error as any other whatsappService call if
+// WhatsApp isn't set up, which the frontend surfaces same as any other error.
+router.get('/whatsapp-templates', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    res.json(success(await listWhatsAppTemplates()));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Settings > WhatsApp. Connection fields (apiUrl, sessionId) are read-only
+// here — real info for troubleshooting, but env-only to change (config.js /
+// docker-compose), never the API key itself. Template IDs are the editable
+// part (see whatsappSettingsService.js).
+router.get('/whatsapp-settings', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    const templates = await getWhatsAppTemplateSettings();
+    res.json(
+      success({
+        configured: isWhatsAppConfigured(),
+        apiUrl: config.openwaApiUrl,
+        sessionId: config.openwaSessionId,
+        ...templates,
+      }),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/whatsapp-settings', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    const { taskReminderTemplateId, welcomeTemplateId } = req.body;
+    res.json(
+      success(
+        await updateWhatsAppTemplateSettings(req.user, { taskReminderTemplateId, welcomeTemplateId }),
+        'WhatsApp settings updated.',
+      ),
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Settings > WhatsApp's per-staff delivery status — who's actually
+// receiving messages vs. who isn't (whatsappService.js's message log,
+// collapsed to one row per active user).
+router.get('/whatsapp-delivery-status', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    res.json(success(await getWhatsAppDeliveryStatus()));
   } catch (err) {
     next(err);
   }

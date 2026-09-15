@@ -69,10 +69,11 @@ services:
       VAPID_PUBLIC_KEY: ""
       VAPID_PRIVATE_KEY: ""
       VAPID_SUBJECT: "mailto:mdtronix.lab@gmail.com"
-      OPENWA_API_URL: "http://localhost:2785"
+      OPENWA_API_URL: "http://100.73.100.36:2785"
       OPENWA_API_KEY: "owa_k1_9af031971442cf86dd75625a7568c5d3112abf8e8ebc076ee41f1577eddd9ade"
       OPENWA_SESSION_ID: "f832f64b-9bc5-4436-bbbe-1009450b05fc"
       OPENWA_TASK_REMINDER_TEMPLATE_ID: ""
+      OPENWA_WELCOME_TEMPLATE_ID: ""
     # Long form (separate host/container keys) rather than a single
     # "host:container" string — CasaOS's own import parser naively splits
     # that string on the *first* colon it finds, which lands inside
@@ -117,7 +118,10 @@ services:
             en_us: Optional — the linked WhatsApp session's UUID (OpenWA dashboard > Sessions > session details), not its human-readable name.
         - container: OPENWA_TASK_REMINDER_TEMPLATE_ID
           description:
-            en_us: Optional — an OpenWA Templates entry's id (Sessions > Templates) for the morning task reminder. Leave blank to use the built-in wording.
+            en_us: Optional default for the morning task reminder's OpenWA template (Sessions > Templates) — overridable later in Settings > WhatsApp without a redeploy. Leave blank to use the built-in wording.
+        - container: OPENWA_WELCOME_TEMPLATE_ID
+          description:
+            en_us: Optional default for the one-time "welcome" template sent when a staff member gets a new WhatsApp number — overridable later in Settings > WhatsApp. Leave blank to use the built-in wording.
       ports:
         - container: "4000"
           description:

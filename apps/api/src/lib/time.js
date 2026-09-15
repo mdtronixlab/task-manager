@@ -37,6 +37,17 @@ export async function today() {
   return new Intl.DateTimeFormat('en-CA', { timeZone }).format(new Date());
 }
 
+/**
+ * @return {Promise<string>} Today's day of week in the org timezone, as one
+ *   of config.js's WEEKDAYS codes (e.g. "SUN") — whatsappService.js checks
+ *   a user's weeklyOff against this before an automatic/broadcast send.
+ */
+export async function orgDayOfWeek() {
+  const timeZone = await getOrgTimezone();
+  // en-US 'short' weekdays are "Sun".."Sat" — uppercasing matches WEEKDAYS.
+  return new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(new Date()).toUpperCase();
+}
+
 // --- Named date ranges (phases.md Phase 5) --------------------------------
 // Pure calendar-date arithmetic on YYYY-MM-DD strings, anchored to UTC
 // purely as a neutral clock (never a real instant) so DST/local-offset

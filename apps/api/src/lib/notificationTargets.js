@@ -9,14 +9,16 @@ import { NOTIFICATION_TARGET_SCOPE } from '../config.js';
 import { requireString, requireEnum } from './validate.js';
 import { ValidationError } from './errors.js';
 
-const RECIPIENT_SELECT = { userId: true, phone: true };
+// weeklyOff rides along even though only the WhatsApp half of a broadcast
+// (whatsappService.js sendToUser) reads it — push ignores the extra field.
+const RECIPIENT_SELECT = { userId: true, phone: true, weeklyOff: true };
 
 /**
  * Resolves a Super Admin's chosen recipients. `target.scope` decides which
  * of the other fields matter — mirrors the shape apps/web's notification
  * composer sends.
- * @param {{scope: string, departmentId?: string, userId?: string}} target
- * @return {Promise<Array<{userId: string, phone: string|null}>>}
+ * @param {{scope: string, departmentId?: string, userIds?: string[]}} target
+ * @return {Promise<Array<{userId: string, phone: string|null, weeklyOff: string|null}>>}
  */
 export async function resolveNotificationTargets(target) {
   const scope = requireEnum(target?.scope, NOTIFICATION_TARGET_SCOPE, 'target.scope');
@@ -30,11 +32,12 @@ export async function resolveNotificationTargets(target) {
     return prisma.user.findMany({ where: { active: true, departmentId }, select: RECIPIENT_SELECT });
   }
 
-  // USER
-  const userId = requireString(target.userId, 'target.userId');
-  const user = await prisma.user.findUnique({ where: { userId }, select: { ...RECIPIENT_SELECT, active: true } });
-  if (!user || !user.active) {
-    throw ValidationError('Selected user was not found or is no longer active.');
+  // USERS — one or more specific staff members, picked from the composer's checklist.
+  if (!Array.isArray(target.userIds) || target.userIds.length === 0) {
+    throw ValidationError('Select at least one staff member.');
   }
-  return [{ userId: user.userId, phone: user.phone }];
+  return prisma.user.findMany({
+    where: { active: true, userId: { in: target.userIds } },
+    select: RECIPIENT_SELECT,
+  });
 }

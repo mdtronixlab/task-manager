@@ -40,11 +40,14 @@ export const TASK_PRIORITY = {
 export const DEFAULT_PRIORITY = TASK_PRIORITY.MEDIUM;
 
 // Who a Super Admin's custom push notification (pushService.js
-// sendCustomNotification) goes to.
+// sendCustomNotification) goes to. USERS carries target.userIds (one or
+// more) rather than a single target.userId — the composer's staff picker
+// defaults every active staff member checked, so "send to everyone" needs
+// no extra selection, while still allowing a narrowed-down subset.
 export const NOTIFICATION_TARGET_SCOPE = {
   ALL: 'ALL',
   DEPARTMENT: 'DEPARTMENT',
-  USER: 'USER',
+  USERS: 'USERS',
 };
 
 export const ID_PREFIX = {
@@ -54,7 +57,35 @@ export const ID_PREFIX = {
   DEPARTMENT: 'DEP',
   LOG: 'LOG',
   PUSH_SUBSCRIPTION: 'PSH',
+  WHATSAPP_MESSAGE: 'WAM',
 };
+
+// whatsappService.js sendToUser — which automatic (or manual) trigger sent
+// a given WhatsAppMessageLog row. Mirrored by apps/web's WhatsAppSettingsCard
+// for its "Recent messages" type labels.
+export const WHATSAPP_MESSAGE_KIND = {
+  TASK_REMINDER: 'TASK_REMINDER',
+  WELCOME: 'WELCOME',
+  TASK_COMPLETION_REMINDER: 'TASK_COMPLETION_REMINDER',
+  TASK_DUE_REMINDER: 'TASK_DUE_REMINDER',
+  TASK_ASSIGNED: 'TASK_ASSIGNED',
+  CUSTOM_BROADCAST: 'CUSTOM_BROADCAST',
+  TEST: 'TEST',
+};
+
+export const WHATSAPP_MESSAGE_STATUS = {
+  SENT: 'SENT',
+  FAILED: 'FAILED',
+  // Never actually attempted — the recipient's weekly off day
+  // (whatsappService.js's isWeeklyOff gate). Distinct from FAILED so
+  // Settings > WhatsApp doesn't read as a delivery problem.
+  SKIPPED: 'SKIPPED',
+};
+
+// User.weeklyOff (comma-separated) — matches the en-US short weekday names
+// Intl.DateTimeFormat produces, uppercased, so lib/time.js's orgDayOfWeek()
+// can compare directly without a lookup table.
+export const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
 // Kept here rather than as free-text literals so the Activity Log viewer's
 // action filter (apps/web/src/constants/activityActions.js mirrors this)
@@ -117,4 +148,9 @@ export const config = {
   // fresh on every send (whatsappService.js), so editing it in OpenWA's
   // own dashboard takes effect immediately, no redeploy.
   openwaTaskReminderTemplateId: process.env.OPENWA_TASK_REMINDER_TEMPLATE_ID || null,
+  // Optional — an OpenWA Templates entry's id for the one-time "you've been
+  // added" WhatsApp sent the moment a user first gets a number on file
+  // (userService.js create/updateUser). Leave blank to use the built-in
+  // wording instead.
+  openwaWelcomeTemplateId: process.env.OPENWA_WELCOME_TEMPLATE_ID || null,
 };

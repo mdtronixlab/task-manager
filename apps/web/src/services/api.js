@@ -176,10 +176,52 @@ export function sendTestPushNotification() {
 
 /**
  * POST /api/push/send — Super Admin only. `target` is
- * `{ scope: 'ALL' | 'DEPARTMENT' | 'USER', departmentId?, userId? }`.
- * `sendWhatsApp: true` also fans the same title/body out over WhatsApp to
- * whichever matched recipients have a number on file.
+ * `{ scope: 'ALL' | 'DEPARTMENT' | 'USERS', departmentId?, userIds? }`.
+ * `sendWhatsApp: true` also fans a WhatsApp message out to whichever matched
+ * recipients have a number on file — by default it mirrors title/body as
+ * plain text; passing `whatsappTemplateId` (+ optional `whatsappVars`) sends
+ * an OpenWA-authored template instead.
  */
-export function sendCustomPushNotification({ title, body, target, sendWhatsApp }) {
-  return api.post('/api/push/send', { title, body, target, sendWhatsApp })
+export function sendCustomPushNotification({ title, body, target, sendWhatsApp, whatsappTemplateId, whatsappVars }) {
+  return api.post('/api/push/send', { title, body, target, sendWhatsApp, whatsappTemplateId, whatsappVars })
+}
+
+/**
+ * GET /api/push/whatsapp-templates — Super Admin only. OpenWA-authored
+ * templates (Sessions > Templates in its own dashboard) for the composer's
+ * template picker: `[{ id, name, header, body, footer }]`.
+ */
+export function getWhatsAppTemplates() {
+  return api.get('/api/push/whatsapp-templates')
+}
+
+/**
+ * GET /api/push/whatsapp-settings — Super Admin only. Settings > WhatsApp:
+ * `{ configured, apiUrl, sessionId, taskReminderTemplateId, welcomeTemplateId }`.
+ * `apiUrl`/`sessionId` are read-only (env-configured); the two template IDs
+ * are editable via updateWhatsAppSettings below.
+ */
+export function getWhatsAppSettings() {
+  return api.get('/api/push/whatsapp-settings')
+}
+
+/**
+ * PATCH /api/push/whatsapp-settings — Super Admin only. Pass `null` (or `''`)
+ * for a template id to clear the override and fall back to its env var / the
+ * plain built-in wording.
+ */
+export function updateWhatsAppSettings({ taskReminderTemplateId, welcomeTemplateId }) {
+  return api.patch('/api/push/whatsapp-settings', { taskReminderTemplateId, welcomeTemplateId })
+}
+
+/**
+ * GET /api/push/whatsapp-delivery-status — Super Admin only. One row per
+ * active staff member: `[{ userId, name, phone, status, lastKind, lastAt, lastError }]`.
+ * `status` is `'NO_NUMBER'` (nothing on file), `'NOT_SENT_YET'` (has a
+ * number, never messaged), `'SENT'` (their most recent message went out),
+ * or `'FAILED'` (it didn't) — reflects whether OpenWA accepted the send,
+ * not a delivered/read receipt.
+ */
+export function getWhatsAppDeliveryStatus() {
+  return api.get('/api/push/whatsapp-delivery-status')
 }

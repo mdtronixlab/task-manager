@@ -7,14 +7,14 @@ export function getUsers() {
   return api.get('/api/users')
 }
 
-/** @param {{name: string, email: string, role: string, departmentId?: string, designation?: string, phone?: string}} data */
+/** @param {{name: string, email: string, role: string, departmentId?: string, designation?: string, phone?: string, weeklyOff?: string[]}} data */
 export function createUser(data) {
   return api.post('/api/users', data)
 }
 
 /**
  * @param {string} userId
- * @param {{name?: string, role?: string, departmentId?: string|null, designation?: string|null, phone?: string|null, active?: boolean}} data
+ * @param {{name?: string, role?: string, departmentId?: string|null, designation?: string|null, phone?: string|null, weeklyOff?: string[], active?: boolean}} data
  *   Partial — only send the fields being changed. Server blocks a Super
  *   Admin deactivating or demoting their own account.
  */
