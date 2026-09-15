@@ -1,13 +1,16 @@
+import { useEffect, useState } from 'react'
+import { Search } from 'lucide-react'
 import Select from '../Select'
 import Input from '../Input'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { DATE_RANGE_OPTIONS } from '../../constants/dateRanges'
 import { TASK_STATUS, TASK_STATUS_META } from '../../constants/taskStatus'
 import { TASK_PRIORITY, TASK_PRIORITY_META } from '../../constants/taskPriority'
 
 /**
  * Combinable task filters (phases.md Phase 5 — Date, Date range, Staff,
- * Department, Category, Status, Priority). Controlled: the parent page owns
- * `filters` and re-fetches whenever `onChange` fires.
+ * Department, Category, Status, Priority, and free-text Search). Controlled:
+ * the parent page owns `filters` and re-fetches whenever `onChange` fires.
  *
  * @param {{
  *   filters: object, onChange: (filters: object) => void,
@@ -28,6 +31,26 @@ export default function TaskFilters({
     return (event) => onChange({ ...filters, [key]: event.target.value })
   }
 
+  // Search is free text, unlike the discrete Select filters below — typing
+  // needs to feel instant while the actual re-fetch waits for a pause, or
+  // every keystroke would fire its own request. Local state decoupled from
+  // `filters.search` so the box never stutters waiting on a round trip.
+  const [searchText, setSearchText] = useState(filters.search || '')
+  const debouncedSearch = useDebouncedValue(searchText, 350)
+
+  useEffect(() => {
+    if (debouncedSearch !== (filters.search || '')) onChange({ ...filters, search: debouncedSearch })
+    // Only debouncedSearch changing should trigger a re-fetch — filters/onChange
+    // are read fresh from the closure, not stale (see hooks/useDebouncedValue.js).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch])
+
+  // Stay in sync if filters.search changes from elsewhere (e.g. a future
+  // "clear filters" action) without fighting the debounce above.
+  useEffect(() => {
+    setSearchText(filters.search || '')
+  }, [filters.search])
+
   // A grid rather than flex-wrap: fixed per-field widths (w-40/w-44) wrapped
   // unevenly at narrow widths — each field landed on its own line in a
   // slightly different position instead of lining up. Grid columns give
@@ -35,6 +58,21 @@ export default function TaskFilters({
   // optional filters (staff/department/custom range) are showing.
   return (
     <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-3 lg:grid-cols-4">
+      <div className="relative col-span-2 sm:col-span-3 lg:col-span-4">
+        <Search
+          className="pointer-events-none absolute bottom-2.5 left-3 size-4 text-on-surface-variant"
+          aria-hidden="true"
+        />
+        <Input
+          label="Search"
+          type="search"
+          placeholder="Search by task title…"
+          value={searchText}
+          onChange={(event) => setSearchText(event.target.value)}
+          className="pl-9"
+          containerClassName="w-full"
+        />
+      </div>
       <Select
         label="Date range"
         value={filters.range}

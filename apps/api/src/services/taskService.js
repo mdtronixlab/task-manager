@@ -44,7 +44,7 @@ function shapeTask(t) {
  * @param {object} currentUser
  * @param {object} params Optional filters: userId, departmentId (admin only),
  *   range (phases.md Phase 5 — one of lib/time.js DATE_RANGE_KEYS), date,
- *   dateFrom, dateTo, status, priority, categoryId.
+ *   dateFrom, dateTo, status, priority, categoryId, search (title substring).
  *   STAFF requests are always forced to their own userId regardless of params.userId.
  */
 export async function getTasks(currentUser, params = {}) {
@@ -62,6 +62,11 @@ export async function getTasks(currentUser, params = {}) {
     // relation rather than doing a separate userId lookup. Staff never need
     // this (they only ever see their own tasks regardless), so it's admin-only.
     ...(isAdmin && params.departmentId ? { user: { departmentId: params.departmentId } } : {}),
+    // No `mode: 'insensitive'` — that's Postgres/Mongo-only in Prisma and
+    // throws on this app's sqlite provider. Not needed anyway: sqlite's LIKE
+    // (what `contains` compiles to here) is already case-insensitive for
+    // ASCII by default.
+    ...(params.search ? { title: { contains: params.search } } : {}),
   };
 
   if (params.range) {

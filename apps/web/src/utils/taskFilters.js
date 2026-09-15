@@ -13,6 +13,7 @@ export function defaultTaskFilters() {
     categoryId: '',
     status: '',
     priority: '',
+    search: '',
   }
 }
 
@@ -23,6 +24,9 @@ export function buildTaskQueryParams(filters) {
     categoryId: filters.categoryId || undefined,
     status: filters.status || undefined,
     priority: filters.priority || undefined,
+    // Trimmed so a search box holding only whitespace behaves like empty
+    // (services/tasks.js already drops undefined values before the request).
+    search: filters.search?.trim() || undefined,
   }
 
   if (filters.range === 'custom') {

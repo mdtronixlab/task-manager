@@ -2,7 +2,7 @@
 
 import { api } from './api'
 
-/** @param {{date?: string, status?: string, priority?: string, categoryId?: string}} params */
+/** @param {{date?: string, status?: string, priority?: string, categoryId?: string, search?: string}} params */
 export function getTasks(params = {}) {
   const query = new URLSearchParams(
     Object.entries(params).filter(([, value]) => value !== undefined && value !== ''),
