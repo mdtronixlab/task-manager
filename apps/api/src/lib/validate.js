@@ -73,3 +73,23 @@ export function requireDateOnly(value, fieldName) {
   }
   return value;
 }
+
+/**
+ * Validates an optional finite number within [min, max] — used for the
+ * best-effort GPS fix taken on task completion (lat/lng/accuracy). Never
+ * blocks completion itself: `null`/`undefined` both mean "no fix" and pass
+ * through as `null`, same reasoning as requireDueTimeOrNull.
+ * @param {*} value
+ * @param {string} fieldName
+ * @param {number} min
+ * @param {number} max
+ * @return {number|null}
+ */
+export function requireFiniteNumberInRangeOrNull(value, fieldName, min, max) {
+  if (value === null || value === undefined) return null;
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < min || num > max) {
+    throw ValidationError(`${fieldName} must be a number between ${min} and ${max}.`);
+  }
+  return num;
+}

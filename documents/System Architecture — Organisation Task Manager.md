@@ -217,7 +217,16 @@ createdAt
 updatedAt
 startedAt
 completedAt
+completionLat
+completionLng
+completionAccuracy
 ```
+
+`completionLat`/`completionLng`/`completionAccuracy` — best-effort GPS fix
+taken client-side at the moment a staff member completes their own task
+(`navigator.geolocation`, never blocking completion on denial/timeout).
+Null whenever no fix was captured. Readable only by Admin/Super Admin
+(`taskService.js`'s `shapeTask`) — never returned to the owning staff member.
 
 Example:
 
@@ -719,6 +728,7 @@ Express API
           ├── Read current status
           ├── Update status
           ├── Set completedAt
+          ├── Set completionLat/Lng/Accuracy (best-effort, may be null)
           └── Write activity log
           │
           ▼

@@ -122,6 +122,26 @@ export default function TaskDetailModal({
         task.startedAt && { key: 'started', label: 'Started', value: formatTime(task.startedAt) },
         task.status === TASK_STATUS.COMPLETED &&
           task.completedAt && { key: 'completed', label: 'Completed', value: formatTime(task.completedAt), tone: true },
+        // Only ever present when the API sent it, which itself only happens
+        // for an Admin/Super Admin caller (taskService.js's shapeTask) — a
+        // staff member never gets their own logged coordinates back, so this
+        // row needs no separate role check here.
+        task.completionLat != null &&
+          task.completionLng != null && {
+            key: 'location',
+            label: 'Location',
+            value: (
+              <a
+                href={`https://maps.google.com/?q=${task.completionLat},${task.completionLng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline-offset-2 hover:underline"
+                onClick={(event) => event.stopPropagation()}
+              >
+                View on map
+              </a>
+            ),
+          },
       ].filter(Boolean)
     : []
 

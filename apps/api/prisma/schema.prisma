@@ -71,6 +71,15 @@ model Task {
   updatedAt         DateTime  @updatedAt
   startedAt         DateTime?
   completedAt       DateTime?
+  // Best-effort GPS fix taken client-side at the moment a staff member
+  // completes their own task (never on an admin-driven status change — only
+  // self-completion ever reaches this). Null whenever permission was denied,
+  // the browser timed out, or the device doesn't support geolocation —
+  // completion is never blocked on this. Visible to Admin/Super Admin only
+  // (taskService.js's shapeTask), never surfaced back to the staff member.
+  completionLat      Float?
+  completionLng      Float?
+  completionAccuracy Float? // meters, from GeolocationPosition.coords.accuracy
   // Soft delete (rules.md §25) — kept for administrative auditing instead of
   // a hard delete; excluded from every normal task query (deletedAt: null).
   deletedAt DateTime?

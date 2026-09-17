@@ -13,6 +13,7 @@ import { TASK_STATUS, TASK_STATUS_META } from '../constants/taskStatus'
 import { describeTaskDateIfNotToday } from '../constants/taskDate'
 import { summarizeTasks } from '../utils/taskSummary'
 import { useToast } from '../context/ToastContext'
+import { getCompletionLocation } from '../utils/geolocation'
 
 /**
  * "My own tasks, today (plus anything still in progress from before today)"
@@ -177,7 +178,12 @@ export function useOwnTaskWorkflow(userId) {
     setBusyTaskId(taskId)
     setError(null)
     try {
-      await updateTask(taskId, { status: nextStatus })
+      // Best-effort GPS fix, self-completion only (gps-on-task-completion
+      // plan) — never blocks the status update itself; getCompletionLocation
+      // resolves to {} on denial/timeout/unsupported browsers.
+      const location =
+        nextStatus === TASK_STATUS.COMPLETED ? await getCompletionLocation() : {}
+      await updateTask(taskId, { status: nextStatus, ...location })
       showToast(`Marked as ${TASK_STATUS_META[nextStatus].label}.`)
       await loadData()
     } catch (err) {

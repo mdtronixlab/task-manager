@@ -8,7 +8,13 @@ import { prisma } from '../db.js';
 import { ROLES, TASK_STATUS, TASK_PRIORITY, DEFAULT_PRIORITY, isElevatedRole } from '../config.js';
 import { generateTaskId } from '../lib/ids.js';
 import { today, resolveDateRange, addDays, assertWithinTaskDateWindow } from '../lib/time.js';
-import { requireString, requireEnum, requireDueTimeOrNull, requireDateOnly } from '../lib/validate.js';
+import {
+  requireString,
+  requireEnum,
+  requireDueTimeOrNull,
+  requireDateOnly,
+  requireFiniteNumberInRangeOrNull,
+} from '../lib/validate.js';
 import { AppError, NotFound, Forbidden, ValidationError } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
 import { sendTaskAssignedNotification } from './pushService.js';
@@ -22,7 +28,10 @@ const TASK_STATUS_TRANSITIONS = {
   COMPLETED: ['IN_PROGRESS'], // reopen — rules.md §23
 };
 
-function shapeTask(t) {
+// `currentUser` gates the completion-location fields to Admin/Super Admin
+// only — a STAFF caller never gets their own logged coordinates back, even
+// on their own task (the feature is oversight-only, not a personal log).
+function shapeTask(t, currentUser) {
   return {
     taskId: t.taskId,
     userId: t.userId,
@@ -37,6 +46,13 @@ function shapeTask(t) {
     updatedAt: t.updatedAt,
     startedAt: t.startedAt,
     completedAt: t.completedAt,
+    ...(isElevatedRole(currentUser.role)
+      ? {
+          completionLat: t.completionLat,
+          completionLng: t.completionLng,
+          completionAccuracy: t.completionAccuracy,
+        }
+      : {}),
   };
 }
 
@@ -87,7 +103,7 @@ export async function getTasks(currentUser, params = {}) {
   }
 
   const tasks = await prisma.task.findMany({ where, orderBy: { createdAt: 'desc' } });
-  return tasks.map(shapeTask);
+  return tasks.map((t) => shapeTask(t, currentUser));
 }
 
 // How far back getTaskTitleSuggestions looks, and how many titles it
@@ -168,7 +184,7 @@ export async function getCarryForwardCandidates(currentUser) {
     orderBy: { taskDate: 'asc' },
   });
 
-  return tasks.map(shapeTask);
+  return tasks.map((t) => shapeTask(t, currentUser));
 }
 
 /**
@@ -235,7 +251,7 @@ export async function carryForwardTask(currentUser, taskId) {
     newTaskId: newTask.taskId,
   });
 
-  return shapeTask(newTask);
+  return shapeTask(newTask, currentUser);
 }
 
 /**
@@ -340,13 +356,17 @@ export async function createTask(currentUser, data = {}) {
     });
   }
 
-  return shapeTask(task);
+  return shapeTask(task, currentUser);
 }
 
 /**
  * @param {object} currentUser
  * @param {string} taskId
- * @param {object} data {title?, description?, priority?, categoryId?, taskDate?, status?}
+ * @param {object} data {title?, description?, priority?, categoryId?, taskDate?, status?,
+ *   completionLat?, completionLng?, completionAccuracy?} The completion* fields are a
+ *   best-effort GPS fix sent only when `status` is transitioning to COMPLETED
+ *   (useOwnTaskWorkflow.js) — ignored otherwise, and only ever readable back
+ *   out by an Admin/Super Admin (shapeTask).
  */
 export async function updateTask(currentUser, taskId, data = {}) {
   requireString(taskId, 'taskId');
@@ -430,9 +450,24 @@ export async function updateTask(currentUser, taskId, data = {}) {
     }
     if (newStatus === TASK_STATUS.COMPLETED) {
       updates.completedAt = new Date();
+      // Best-effort GPS fix taken client-side at the moment of completion
+      // (useOwnTaskWorkflow.js) — silently null when omitted (permission
+      // denied, timed out, unsupported browser); completion is never
+      // blocked on it.
+      updates.completionLat = requireFiniteNumberInRangeOrNull(data.completionLat, 'Completion latitude', -90, 90);
+      updates.completionLng = requireFiniteNumberInRangeOrNull(data.completionLng, 'Completion longitude', -180, 180);
+      updates.completionAccuracy = requireFiniteNumberInRangeOrNull(
+        data.completionAccuracy,
+        'Completion accuracy',
+        0,
+        Number.MAX_SAFE_INTEGER,
+      );
     }
     if (task.status === TASK_STATUS.COMPLETED && newStatus === TASK_STATUS.IN_PROGRESS) {
       updates.completedAt = null; // reopen clears completion — rules.md §23
+      updates.completionLat = null;
+      updates.completionLng = null;
+      updates.completionAccuracy = null;
     }
 
     updates.status = newStatus;
@@ -454,7 +489,7 @@ export async function updateTask(currentUser, taskId, data = {}) {
     }
   }
 
-  return shapeTask(updated);
+  return shapeTask(updated, currentUser);
 }
 
 /**
