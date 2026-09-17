@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Plus, X } from 'lucide-react'
 import {
   getWhatsAppSettings,
   updateWhatsAppSettings,
@@ -10,14 +10,11 @@ import { useToast } from '../../context/ToastContext'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../Card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../Table'
 import Badge from '../Badge'
-import Input from '../Input'
 import Select from '../Select'
 import Button from '../Button'
 import LoadingState from '../LoadingState'
 import ErrorState from '../ErrorState'
 import { WEEKDAYS } from '../../constants/weekdays'
-
-const NO_OVERRIDE = { value: '', label: 'Use the built-in wording' }
 
 // Mirrors apps/api/src/config.js's WHATSAPP_MESSAGE_KIND — every trigger
 // whatsappService.js's sendToUser can be called with.
@@ -29,6 +26,50 @@ const KIND_LABELS = {
   TASK_ASSIGNED: 'Task assigned',
   CUSTOM_BROADCAST: 'Broadcast',
   TEST: 'Test message',
+}
+
+// The Scheduler's own per-entry type — which sweep a time belongs to.
+// Mirrors taskReminderService.js ('REMINDER') / taskCompletionReminderService.js
+// ('COMPLETION'); kept as one UI concept (one combined list) even though the
+// two API fields (taskReminderSchedules/taskCompletionReminderSchedules)
+// stay separate under the hood — see mergeSchedules/splitSchedules below.
+// There's no separate "which type" control in the UI — picking a template
+// (grouped by type in SchedulerEditor's one dropdown) sets both at once, so
+// TYPE_LABELS only needs to cover the built-in-wording option within each
+// group, not a standalone type picker.
+const TYPE_LABELS = {
+  REMINDER: "Reminder — hasn't added a task yet",
+  COMPLETION: 'Completion — still has an unfinished task',
+}
+
+/** `getWhatsAppSettings()`'s two separate arrays -> one combined, type-tagged list for the Scheduler UI. */
+function mergeSchedules(data) {
+  return [
+    ...(data.taskReminderSchedules || []).map((entry) => ({ ...entry, type: 'REMINDER' })),
+    ...(data.taskCompletionReminderSchedules || []).map((entry) => ({ ...entry, type: 'COMPLETION' })),
+  ]
+}
+
+/** The Scheduler's combined list -> the two separate arrays updateWhatsAppSettings expects. */
+function splitSchedules(schedules) {
+  const strip = (list) => list.map(({ time, templateId }) => ({ time, templateId: templateId || null }))
+  return {
+    taskReminderSchedules: strip(schedules.filter((e) => e.type === 'REMINDER')),
+    taskCompletionReminderSchedules: strip(schedules.filter((e) => e.type === 'COMPLETION')),
+  }
+}
+
+// One <select> value has to carry both which nudge an entry belongs to and
+// which template it sends — "type::templateId", templateId blank for the
+// built-in wording. Encoding it into the value (rather than two selects) is
+// what makes picking a template also pick the type, per the product call:
+// grouping templates by type in the dropdown *is* the type choice.
+function encodeChoice(type, templateId) {
+  return `${type}::${templateId || ''}`
+}
+function decodeChoice(value) {
+  const [type, templateId] = value.split('::')
+  return { type, templateId: templateId || null }
 }
 
 // Mirrors the `status` values getWhatsAppDeliveryStatus() (whatsappService.js) returns.
@@ -52,18 +93,127 @@ function formatTimestamp(iso) {
 }
 
 /**
+ * One combined list of {time, type, templateId} entries — every automatic
+ * WhatsApp nudge (the morning task reminder and the evening completion
+ * reminder) lives in this one "Scheduler" list instead of two separate
+ * sections. Each entry's one dropdown picks a template grouped under which
+ * nudge it belongs to — picking a template also picks the type, there's no
+ * separate type control (see encodeChoice/decodeChoice above). Split back
+ * into the two API arrays on save — see splitSchedules.
+ *
+ * `canPickTemplates` (settings.configured && templates actually loaded)
+ * gates whether the dropdown offers real OpenWA templates at all — when it
+ * can't (not connected yet, or nothing created in OpenWA), it falls back to
+ * a plain two-option type choice, built-in wording only.
+ */
+function SchedulerEditor({ schedules, onChange, templates, canPickTemplates }) {
+  function updateChoice(index, value) {
+    const { type, templateId } = decodeChoice(value)
+    onChange(schedules.map((entry, i) => (i === index ? { ...entry, type, templateId } : entry)))
+  }
+
+  function updateTime(index, value) {
+    onChange(schedules.map((entry, i) => (i === index ? { ...entry, time: value } : entry)))
+  }
+
+  function removeEntry(index) {
+    onChange(schedules.filter((_, i) => i !== index))
+  }
+
+  function addEntry() {
+    const last = schedules[schedules.length - 1]
+    onChange([...schedules, { time: last?.time || '09:00', type: last?.type || 'REMINDER', templateId: null }])
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-outline-variant pt-5">
+      <span className="text-body-sm font-medium text-on-surface">Scheduler</span>
+      <p className="text-body-sm text-on-surface-variant">
+        Automatic WhatsApp nudges — add a time and pick which template it sends; the template also decides who gets
+        it. Remove every entry of a type to turn that nudge off.
+      </p>
+      <div className="flex flex-col gap-2">
+        {schedules.map((entry, index) => (
+          <div key={index} className="flex flex-wrap items-center gap-2">
+            <input
+              type="time"
+              value={entry.time}
+              onChange={(e) => updateTime(index, e.target.value)}
+              autoComplete="off"
+              className="h-10 w-36 shrink-0 rounded-md border border-outline-variant bg-surface-container-low px-3 text-body-md text-on-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            />
+            {canPickTemplates ? (
+              <Select
+                value={encodeChoice(entry.type, entry.templateId)}
+                onChange={(e) => updateChoice(index, e.target.value)}
+                containerClassName="min-w-[18rem] flex-1"
+              >
+                {Object.entries(TYPE_LABELS).map(([type, groupLabel]) => (
+                  <optgroup key={type} label={groupLabel}>
+                    <option value={encodeChoice(type, null)}>Built-in wording</option>
+                    {templates.map((t) => (
+                      <option key={`${type}-${t.id}`} value={encodeChoice(type, t.id)}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </Select>
+            ) : (
+              <Select
+                value={entry.type}
+                onChange={(e) =>
+                  onChange(schedules.map((s, i) => (i === index ? { ...s, type: e.target.value, templateId: null } : s)))
+                }
+                options={Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }))}
+                containerClassName="min-w-[18rem] flex-1"
+              />
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => removeEntry(index)}
+              aria-label="Remove this schedule entry"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        ))}
+        {schedules.length === 0 && (
+          <p className="text-body-sm text-on-surface-variant">No times set — both nudges are off.</p>
+        )}
+      </div>
+      <Button type="button" variant="secondary" size="sm" onClick={addEntry} className="self-start">
+        <Plus className="size-4" aria-hidden="true" />
+        Add a time
+      </Button>
+    </div>
+  )
+}
+
+/**
  * Settings > WhatsApp — its own section, separate from Team (per-user
  * numbers) and Send Notification (one-off broadcasts): connection status,
- * which OpenWA-authored template each *automatic* WhatsApp message uses
- * (the daily task reminder, and the one-time welcome message —
- * whatsappService.js sendTaskReminderWhatsApp/sendWelcomeWhatsApp), and a
- * per-staff delivery status so it's obvious at a glance who's actually
- * receiving messages and who isn't.
+ * and one Scheduler — a single combined list of {time, type, templateId}
+ * entries driving both automatic nudges, the morning task reminder and the
+ * evening completion reminder (taskReminderService.js /
+ * taskCompletionReminderService.js) — instead of a fixed time (or two
+ * separate sections) baked into code. Each entry's one dropdown picks an
+ * OpenWA template (or the plain built-in wording), grouped by which nudge
+ * it belongs to — picking a template picks the type too, no separate
+ * control for it (the one-time welcome message, by contrast, has no
+ * Scheduler entry at all — its template is env-only,
+ * OPENWA_WELCOME_TEMPLATE_ID). A per-staff delivery status rounds it out,
+ * so it's obvious at a glance who's actually receiving messages and who
+ * isn't.
  *
  * Connection fields (API URL, session ID) are read-only — real values for
  * troubleshooting, but env-configured (config.js / docker-compose), not
- * something to paste into a web form alongside an API key. Template IDs
- * are the editable part, persisted via whatsappSettingsService.js.
+ * something to paste into a web form alongside an API key. The Scheduler is
+ * the editable part — the API still stores/serves it as two separate arrays
+ * (whatsappSettingsService.js), merged/split at the edges here (see
+ * mergeSchedules/splitSchedules) so this page can present it as one list.
  */
 export default function WhatsAppSettingsCard() {
   const { showToast } = useToast()
@@ -76,8 +226,7 @@ export default function WhatsAppSettingsCard() {
   const [templatesLoading, setTemplatesLoading] = useState(false)
   const [templatesError, setTemplatesError] = useState(null)
 
-  const [taskReminderTemplateId, setTaskReminderTemplateId] = useState('')
-  const [welcomeTemplateId, setWelcomeTemplateId] = useState('')
+  const [schedules, setSchedules] = useState([])
   const [saving, setSaving] = useState(false)
 
   const [staffStatus, setStaffStatus] = useState([])
@@ -90,8 +239,7 @@ export default function WhatsAppSettingsCard() {
     try {
       const data = await getWhatsAppSettings()
       setSettings(data)
-      setTaskReminderTemplateId(data.taskReminderTemplateId || '')
-      setWelcomeTemplateId(data.welcomeTemplateId || '')
+      setSchedules(mergeSchedules(data))
     } catch (err) {
       setError(err.message || 'Could not load WhatsApp settings. Please try again.')
     } finally {
@@ -116,27 +264,29 @@ export default function WhatsAppSettingsCard() {
     loadStaffStatus()
   }, [])
 
-  // Only once connected — an unconfigured OpenWA session can't list
-  // templates at all, so the pickers below fall back to plain text fields.
-  useEffect(() => {
-    if (!settings?.configured) return
+  function loadTemplates() {
     setTemplatesLoading(true)
     setTemplatesError(null)
     getWhatsAppTemplates()
       .then(setTemplates)
       .catch((err) => setTemplatesError(err.message || 'Could not load WhatsApp templates.'))
       .finally(() => setTemplatesLoading(false))
+  }
+
+  // Only once connected — an unconfigured OpenWA session can't list
+  // templates at all, so the Scheduler falls back to a plain type choice.
+  useEffect(() => {
+    if (!settings?.configured) return
+    loadTemplates()
   }, [settings?.configured])
 
   async function handleSave(event) {
     event.preventDefault()
     setSaving(true)
     try {
-      const updated = await updateWhatsAppSettings({
-        taskReminderTemplateId: taskReminderTemplateId || null,
-        welcomeTemplateId: welcomeTemplateId || null,
-      })
+      const updated = await updateWhatsAppSettings(splitSchedules(schedules))
       setSettings((prev) => ({ ...prev, ...updated }))
+      setSchedules(mergeSchedules(updated))
       showToast('WhatsApp settings updated.')
     } catch (err) {
       showToast(err.message || 'Could not save WhatsApp settings. Please try again.', { tone: 'error' })
@@ -165,7 +315,6 @@ export default function WhatsAppSettingsCard() {
     )
   }
 
-  const templateOptions = [NO_OVERRIDE, ...templates.map((t) => ({ value: t.id, label: t.name }))]
   const canPickTemplates = settings.configured && !templatesLoading && !templatesError && templates.length > 0
 
   return (
@@ -176,7 +325,7 @@ export default function WhatsAppSettingsCard() {
             <div>
               <CardTitle>WhatsApp</CardTitle>
               <CardDescription>
-                Connection status and which OpenWA template the automatic reminders use.
+                Connection status, and when each automatic reminder goes out and which template it uses.
               </CardDescription>
             </div>
             <Button variant="ghost" size="sm" onClick={load} className="shrink-0">
@@ -210,46 +359,34 @@ export default function WhatsAppSettingsCard() {
             </div>
 
             {templatesError && (
-              <p role="alert" className="rounded-md bg-tone-error-bg px-3 py-2 text-body-sm text-tone-error-text">
-                {templatesError} — paste a template id directly below instead.
+              <div
+                role="alert"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-tone-error-bg px-3 py-2 text-body-sm text-tone-error-text"
+              >
+                <span>{templatesError} — the Scheduler will offer built-in wording only until this is retried.</span>
+                <Button type="button" variant="ghost" size="sm" onClick={loadTemplates}>
+                  <RefreshCw className="size-4" aria-hidden="true" />
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {settings.configured && !templatesLoading && !templatesError && templates.length === 0 && (
+              <p className="text-body-sm text-on-surface-variant">
+                No templates found in OpenWA yet — create one under Sessions &gt; Templates in its dashboard, then{' '}
+                <button type="button" onClick={loadTemplates} className="underline hover:no-underline">
+                  refresh
+                </button>{' '}
+                here to pick it in the Scheduler below.
               </p>
             )}
 
-            {canPickTemplates ? (
-              <Select
-                label="Daily task reminder template"
-                hint="Sent each morning to staff who haven't added a task yet."
-                value={taskReminderTemplateId}
-                onChange={(e) => setTaskReminderTemplateId(e.target.value)}
-                options={templateOptions}
-              />
-            ) : (
-              <Input
-                label="Daily task reminder template id"
-                hint="Sent each morning to staff who haven't added a task yet. Leave blank for the built-in wording."
-                value={taskReminderTemplateId}
-                onChange={(e) => setTaskReminderTemplateId(e.target.value)}
-                placeholder="OpenWA template id (optional)"
-              />
-            )}
-
-            {canPickTemplates ? (
-              <Select
-                label="Welcome message template"
-                hint="Sent once, the moment a user first gets a WhatsApp number on file."
-                value={welcomeTemplateId}
-                onChange={(e) => setWelcomeTemplateId(e.target.value)}
-                options={templateOptions}
-              />
-            ) : (
-              <Input
-                label="Welcome message template id"
-                hint="Sent once, the moment a user first gets a WhatsApp number on file. Leave blank for the built-in wording."
-                value={welcomeTemplateId}
-                onChange={(e) => setWelcomeTemplateId(e.target.value)}
-                placeholder="OpenWA template id (optional)"
-              />
-            )}
+            <SchedulerEditor
+              schedules={schedules}
+              onChange={setSchedules}
+              templates={templates}
+              canPickTemplates={canPickTemplates}
+            />
           </CardContent>
           <CardFooter>
             <Button type="submit" loading={saving} loadingText="Saving…">

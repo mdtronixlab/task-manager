@@ -1,26 +1,26 @@
 // End-of-day "mark your tasks completed" reminder — the counterpart to
-// taskReminderService.js's morning "add your task" nudge. Fires once, at
-// 6:00 PM in the org's configured timezone, for every staff member who
-// still has a PENDING or IN_PROGRESS task dated today. BLOCKED tasks are
-// deliberately excluded — nagging someone to complete something they've
-// already flagged as blocked isn't useful (same reasoning taskService.js's
-// status-transition rules already apply elsewhere).
+// taskReminderService.js's morning "add your task" nudge. Fires at whatever
+// times Settings > WhatsApp's completion-reminder schedule has configured
+// (org timezone, empty to turn it off — see whatsappSettingsService.js's
+// getWhatsAppScheduleSettings), for every staff member who still has a
+// PENDING or IN_PROGRESS task dated today. BLOCKED tasks are deliberately
+// excluded — nagging someone to complete something they've already flagged
+// as blocked isn't useful (same reasoning taskService.js's status-transition
+// rules already apply elsewhere).
 //
 // Same in-process interval approach as the other two reminder services,
-// for the same reason: the org timezone can change at runtime (Settings),
-// so recomputing the local time on every tick tracks that without a cron
-// dependency.
+// for the same reason: the org timezone and the schedule itself can both
+// change at runtime (Settings), so recomputing them on every tick tracks
+// that without a cron dependency.
 
 import { prisma } from '../db.js';
 import { ROLES, TASK_STATUS } from '../config.js';
 import { getOrgTimezone, today } from '../lib/time.js';
 import { isPushConfigured, sendTaskCompletionReminder } from './pushService.js';
 import { isWhatsAppConfigured, sendTaskCompletionReminderWhatsApp } from './whatsappService.js';
+import { getWhatsAppScheduleSettings } from './whatsappSettingsService.js';
 
 const CHECK_INTERVAL_MS = 60 * 1000;
-
-// Minutes-since-local-midnight for the single reminder attempt: 6:00 PM.
-const REMINDER_SLOT_MINUTES = 18 * 60;
 
 // `${date}-${minuteOfDay}` of the most recently fired slot — same
 // same-minute double-fire guard as taskReminderService.js.
@@ -44,10 +44,13 @@ async function currentOrgMinuteOfDay() {
  * Notifies every active staff member who still has a PENDING or
  * IN_PROGRESS task dated today. Exported (not just called from tick()) so
  * a Super Admin can also trigger it on demand via
- * POST /api/push/task-completion-reminder-sweep for testing.
+ * POST /api/push/task-completion-reminder-sweep for testing — a manual run
+ * has no schedule entry to pull a template from, so it defaults to the
+ * built-in wording unless one is passed explicitly.
+ * @param {string|null} [templateId] The OpenWA template the firing schedule entry picked, or null for the built-in wording.
  * @return {Promise<{staffCount: number, pendingCount: number, notified: number}>}
  */
-export async function runTaskCompletionReminderSweep() {
+export async function runTaskCompletionReminderSweep(templateId = null) {
   const pushOn = isPushConfigured();
   const waOn = isWhatsAppConfigured();
   if (!pushOn && !waOn) return { staffCount: 0, pendingCount: 0, notified: 0 };
@@ -75,7 +78,7 @@ export async function runTaskCompletionReminderSweep() {
     pending.map(async (u) => {
       const outcomes = await Promise.allSettled([
         pushOn ? sendTaskCompletionReminder(u) : null,
-        waOn ? sendTaskCompletionReminderWhatsApp(u) : null,
+        waOn ? sendTaskCompletionReminderWhatsApp(u, templateId) : null,
       ]);
       return outcomes.some((o) => o.status === 'fulfilled' && o.value?.sent > 0);
     }),
@@ -86,8 +89,12 @@ export async function runTaskCompletionReminderSweep() {
 }
 
 async function tick() {
+  const { taskCompletionReminderSchedules } = await getWhatsAppScheduleSettings();
+  if (taskCompletionReminderSchedules.length === 0) return;
+
   const minuteOfDay = await currentOrgMinuteOfDay();
-  if (minuteOfDay !== REMINDER_SLOT_MINUTES) return;
+  const schedule = taskCompletionReminderSchedules.find((s) => s.minutes === minuteOfDay);
+  if (!schedule) return;
 
   const date = await today();
   const slotKey = `${date}-${minuteOfDay}`;
@@ -95,7 +102,7 @@ async function tick() {
   lastFiredSlot = slotKey;
 
   try {
-    await runTaskCompletionReminderSweep();
+    await runTaskCompletionReminderSweep(schedule.templateId);
   } catch (err) {
     console.error('[taskCompletionReminderService] sweep failed:', err);
   }

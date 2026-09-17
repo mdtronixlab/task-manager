@@ -219,7 +219,8 @@ export async function sendTaskReminder(user) {
 /**
  * Nudges one staff member who still has an unfinished (PENDING/
  * IN_PROGRESS) task at end of day. Called by
- * taskCompletionReminderService's 6pm sweep — never directly from a route.
+ * taskCompletionReminderService's sweep, at whatever time Settings >
+ * WhatsApp has configured for it — never directly from a route.
  */
 export async function sendTaskCompletionReminder(user) {
   ensureConfigured();

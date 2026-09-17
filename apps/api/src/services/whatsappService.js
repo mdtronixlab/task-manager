@@ -19,7 +19,6 @@ import { AppError, ValidationError } from '../lib/errors.js';
 import { resolveNotificationTargets } from '../lib/notificationTargets.js';
 import { generateWhatsAppMessageLogId } from '../lib/ids.js';
 import { orgDayOfWeek } from '../lib/time.js';
-import { getWhatsAppTemplateSettings } from './whatsappSettingsService.js';
 
 export function isWhatsAppConfigured() {
   return Boolean(config.openwaApiUrl && config.openwaApiKey && config.openwaSessionId);
@@ -203,15 +202,15 @@ export async function sendTestWhatsAppMessage(user) {
 /**
  * Nudges one staff member who hasn't added a task for today yet — called
  * by taskReminderService's sweep, alongside pushService's sendTaskReminder.
- * Uses the OpenWA-authored template picked in Settings > WhatsApp (falls
- * back to OPENWA_TASK_REMINDER_TEMPLATE_ID, then to a plain built-in
- * message — see whatsappSettingsService.js) when set (Sessions > Templates
- * in the OpenWA dashboard — edit the wording there, no redeploy needed).
+ * `templateId` comes from whichever Settings > WhatsApp schedule entry just
+ * fired (taskReminderService.js) — an OpenWA-authored template (Sessions >
+ * Templates in its own dashboard, edit the wording there, no redeploy
+ * needed) if that entry picked one, or `null`/omitted for the plain
+ * built-in message.
  */
-export async function sendTaskReminderWhatsApp(user) {
+export async function sendTaskReminderWhatsApp(user, templateId = null) {
   ensureConfigured();
   const firstName = user.name.split(' ')[0];
-  const { taskReminderTemplateId: templateId } = await getWhatsAppTemplateSettings();
   return sendToUser(
     user,
     templateId
@@ -226,13 +225,14 @@ export async function sendTaskReminderWhatsApp(user) {
  * One-time "you've been added" message — fired by userService.js the
  * moment a user first gets a WhatsApp number on file (create, or an edit
  * that sets one where there wasn't one before), never on every edit
- * thereafter. Same template-or-fallback shape as sendTaskReminderWhatsApp
- * above, via Settings > WhatsApp / OPENWA_WELCOME_TEMPLATE_ID.
+ * thereafter. Its template is env-only (OPENWA_WELCOME_TEMPLATE_ID,
+ * config.js) — sent automatically whenever it's set, with no Settings UI to
+ * pick a different one; the plain built-in wording otherwise.
  */
 export async function sendWelcomeWhatsApp(user) {
   ensureConfigured();
   const firstName = user.name.split(' ')[0];
-  const { welcomeTemplateId: templateId } = await getWhatsAppTemplateSettings();
+  const templateId = config.openwaWelcomeTemplateId;
   return sendToUser(
     user,
     templateId
@@ -250,14 +250,32 @@ export async function sendWelcomeWhatsApp(user) {
   );
 }
 
-/** Nudges one staff member who still has an unfinished task at end of day — called by taskCompletionReminderService's 6pm sweep. */
-export async function sendTaskCompletionReminderWhatsApp(user) {
+/**
+ * Nudges one staff member who still has an unfinished task at end of day —
+ * called by taskCompletionReminderService's sweep. Same
+ * schedule-entry-picks-its-own-template shape as sendTaskReminderWhatsApp
+ * above: `templateId` is whatever Settings > WhatsApp's completion-reminder
+ * schedule entry that just fired specified, or `null` for the built-in
+ * wording.
+ */
+export async function sendTaskCompletionReminderWhatsApp(user, templateId = null) {
   ensureConfigured();
-  const text = formatMessage(
-    'Wrap up your tasks',
-    `Hi ${user.name.split(' ')[0]}, you still have unfinished tasks for today — mark them completed once you're done.`,
+  const firstName = user.name.split(' ')[0];
+  return sendToUser(
+    user,
+    templateId
+      ? (phone) => sendTemplate(phone, templateId, { staff_name: firstName })
+      : (phone) =>
+          sendText(
+            phone,
+            formatMessage(
+              'Wrap up your tasks',
+              `Hi ${firstName}, you still have unfinished tasks for today — mark them completed once you're done.`,
+            ),
+          ),
+    WHATSAPP_MESSAGE_KIND.TASK_COMPLETION_REMINDER,
+    templateId,
   );
-  return sendToUser(user, (phone) => sendText(phone, text), WHATSAPP_MESSAGE_KIND.TASK_COMPLETION_REMINDER);
 }
 
 /** Nudges a task's owner at its due time — called by taskDueReminderService's per-minute tick. */
@@ -302,7 +320,7 @@ export async function sendCustomWhatsAppBroadcast(recipients, title, body) {
  * Template variant of the broadcast above — same recipients/no-op-when-
  * unconfigured shape, but sends an OpenWA-authored template (Sessions >
  * Templates in its own dashboard) instead of plain text, the same way
- * sendTaskReminderWhatsApp's OPENWA_TASK_REMINDER_TEMPLATE_ID path does.
+ * sendTaskReminderWhatsApp's schedule-provided templateId does.
  * Lets a Super Admin's custom broadcast use a pre-approved WhatsApp
  * template (e.g. for numbers outside the 24-hour session window, which
  * OpenWA/WhatsApp Business API restricts to template messages only).

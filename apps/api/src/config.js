@@ -142,15 +142,12 @@ export const config = {
   openwaApiUrl: (process.env.OPENWA_API_URL || 'http://localhost:2785').replace(/\/+$/, ''),
   openwaApiKey: process.env.OPENWA_API_KEY || null,
   openwaSessionId: process.env.OPENWA_SESSION_ID || null,
-  // Optional — the id (not name; names can be edited) of an OpenWA
-  // Templates entry (Sessions > Templates) to use for the morning "add
-  // your task" reminder instead of the plain built-in wording. Fetched
-  // fresh on every send (whatsappService.js), so editing it in OpenWA's
-  // own dashboard takes effect immediately, no redeploy.
-  openwaTaskReminderTemplateId: process.env.OPENWA_TASK_REMINDER_TEMPLATE_ID || null,
   // Optional — an OpenWA Templates entry's id for the one-time "you've been
   // added" WhatsApp sent the moment a user first gets a number on file
   // (userService.js create/updateUser). Leave blank to use the built-in
-  // wording instead.
+  // wording instead, and env-only (no Settings UI override) — unlike the
+  // morning task reminder and evening completion reminder, which each pick
+  // their own template per schedule entry in Settings > WhatsApp's
+  // Scheduler, this one has no per-send choice to make.
   openwaWelcomeTemplateId: process.env.OPENWA_WELCOME_TEMPLATE_ID || null,
 };

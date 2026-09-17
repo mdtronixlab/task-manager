@@ -197,21 +197,28 @@ export function getWhatsAppTemplates() {
 
 /**
  * GET /api/push/whatsapp-settings — Super Admin only. Settings > WhatsApp:
- * `{ configured, apiUrl, sessionId, taskReminderTemplateId, welcomeTemplateId }`.
- * `apiUrl`/`sessionId` are read-only (env-configured); the two template IDs
- * are editable via updateWhatsAppSettings below.
+ * `{ configured, apiUrl, sessionId, taskReminderSchedules,
+ * taskCompletionReminderSchedules }`. `apiUrl`/`sessionId` are read-only
+ * (env-configured). Each of `taskReminderSchedules`/`taskCompletionReminderSchedules`
+ * is an array of `{ time: "HH:mm", minutes: number }` (org timezone, one
+ * send per entry) — an empty array means that reminder is off. The welcome
+ * message's template is env-only (OPENWA_WELCOME_TEMPLATE_ID), not exposed
+ * here.
  */
 export function getWhatsAppSettings() {
   return api.get('/api/push/whatsapp-settings')
 }
 
 /**
- * PATCH /api/push/whatsapp-settings — Super Admin only. Pass `null` (or `''`)
- * for a template id to clear the override and fall back to its env var / the
- * plain built-in wording.
+ * PATCH /api/push/whatsapp-settings — Super Admin only. Pass `[]` for either
+ * schedule to turn that automatic reminder off; each entry only needs
+ * `{ time }`.
  */
-export function updateWhatsAppSettings({ taskReminderTemplateId, welcomeTemplateId }) {
-  return api.patch('/api/push/whatsapp-settings', { taskReminderTemplateId, welcomeTemplateId })
+export function updateWhatsAppSettings({ taskReminderSchedules, taskCompletionReminderSchedules }) {
+  return api.patch('/api/push/whatsapp-settings', {
+    taskReminderSchedules,
+    taskCompletionReminderSchedules,
+  })
 }
 
 /**

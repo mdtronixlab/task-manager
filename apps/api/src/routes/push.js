@@ -13,7 +13,7 @@ import { runTaskReminderSweep } from '../services/taskReminderService.js';
 import { runTaskCompletionReminderSweep } from '../services/taskCompletionReminderService.js';
 import { runTaskDueReminderSweep } from '../services/taskDueReminderService.js';
 import { listWhatsAppTemplates, getWhatsAppDeliveryStatus, isWhatsAppConfigured } from '../services/whatsappService.js';
-import { getWhatsAppTemplateSettings, updateWhatsAppTemplateSettings } from '../services/whatsappSettingsService.js';
+import { getWhatsAppScheduleSettings, updateWhatsAppScheduleSettings } from '../services/whatsappSettingsService.js';
 
 const router = Router();
 
@@ -72,9 +72,10 @@ router.post('/send', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   }
 });
 
-// Manual "run it now" trigger for the 8am task reminder sweep — the
-// scheduler (taskReminderService.js) fires this automatically at 8:00/8:30/
-// 9:00 org time; this lets a Super Admin verify it works without waiting.
+// Manual "run it now" trigger for the morning task reminder sweep — the
+// scheduler (taskReminderService.js) fires this automatically at whatever
+// times Settings > WhatsApp has configured, org time; this lets a Super
+// Admin verify it works without waiting.
 router.post('/task-reminder-sweep', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
     res.json(success(await runTaskReminderSweep(), 'Task reminder sweep run.'));
@@ -83,9 +84,10 @@ router.post('/task-reminder-sweep', requireRole(ROLES.SUPER_ADMIN), async (req, 
   }
 });
 
-// Manual "run it now" trigger for the 6pm "mark completed" sweep — fires
-// automatically at 18:00 org time (taskCompletionReminderService.js); this
-// lets a Super Admin verify it works without waiting.
+// Manual "run it now" trigger for the "mark completed" sweep — fires
+// automatically at whatever time Settings > WhatsApp has configured, org
+// time (taskCompletionReminderService.js); this lets a Super Admin verify
+// it works without waiting.
 router.post('/task-completion-reminder-sweep', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
     res.json(success(await runTaskCompletionReminderSweep(), 'Task completion reminder sweep run.'));
@@ -118,17 +120,21 @@ router.get('/whatsapp-templates', requireRole(ROLES.SUPER_ADMIN), async (req, re
 
 // Settings > WhatsApp. Connection fields (apiUrl, sessionId) are read-only
 // here — real info for troubleshooting, but env-only to change (config.js /
-// docker-compose), never the API key itself. Template IDs are the editable
-// part (see whatsappSettingsService.js).
+// docker-compose), never the API key itself. The two reminder schedules
+// (each a list of {time, templateId} entries — WhatsAppSettingsCard.jsx
+// presents them merged into one "Scheduler" list, picking a template also
+// picks which of the two an entry belongs to) are the editable part (see
+// whatsappSettingsService.js) — the welcome message's template is env-only
+// (OPENWA_WELCOME_TEMPLATE_ID), not editable here.
 router.get('/whatsapp-settings', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
-    const templates = await getWhatsAppTemplateSettings();
+    const schedule = await getWhatsAppScheduleSettings();
     res.json(
       success({
         configured: isWhatsAppConfigured(),
         apiUrl: config.openwaApiUrl,
         sessionId: config.openwaSessionId,
-        ...templates,
+        ...schedule,
       }),
     );
   } catch (err) {
@@ -138,13 +144,12 @@ router.get('/whatsapp-settings', requireRole(ROLES.SUPER_ADMIN), async (req, res
 
 router.patch('/whatsapp-settings', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
-    const { taskReminderTemplateId, welcomeTemplateId } = req.body;
-    res.json(
-      success(
-        await updateWhatsAppTemplateSettings(req.user, { taskReminderTemplateId, welcomeTemplateId }),
-        'WhatsApp settings updated.',
-      ),
-    );
+    const { taskReminderSchedules, taskCompletionReminderSchedules } = req.body;
+    const schedule = await updateWhatsAppScheduleSettings(req.user, {
+      taskReminderSchedules,
+      taskCompletionReminderSchedules,
+    });
+    res.json(success(schedule, 'WhatsApp settings updated.'));
   } catch (err) {
     next(err);
   }
