@@ -67,4 +67,14 @@ server {
     location = /sw.js {
         add_header Cache-Control "no-cache";
     }
+
+    # manifest.webmanifest (usePwaInstall.js's installability, via
+    # index.html's <link rel="manifest">) — nginx's bundled mime.types has
+    # no entry for this extension, so without an explicit type it's served
+    # as application/octet-stream, which some browsers refuse to treat as a
+    # valid web app manifest. Same no-cache reasoning as sw.js above.
+    location = /manifest.webmanifest {
+        default_type application/manifest+json;
+        add_header Cache-Control "no-cache";
+    }
 }

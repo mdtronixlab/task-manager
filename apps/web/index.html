@@ -6,6 +6,17 @@
     <meta name="description" content="Organisation Task Manager" />
     <title>Organisation Task Manager</title>
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <!-- Installable PWA (usePwaInstall.js) — manifest.webmanifest is what
+         makes the browser consider the app installable at all; sw.js
+         (registered unconditionally in main.jsx) additionally has to be an
+         active, controlling registration for that to actually fire. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#4f46e5" />
+    <!-- iOS ignores the manifest entirely — these are what put the app in
+         standalone (no browser chrome) mode when added via the share sheet. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Tasker" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <script>

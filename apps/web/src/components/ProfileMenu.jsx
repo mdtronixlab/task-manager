@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { LogOut, Bell, BellOff, Send } from 'lucide-react'
+import { LogOut, Bell, BellOff, Send, Download } from 'lucide-react'
 import ProfileIcon from './ProfileIcon'
 import { usePushNotifications } from '../hooks/usePushNotifications'
+import { usePwaInstall } from '../hooks/usePwaInstall'
 
 /**
  * Account menu: click the profile picture to reveal name/email + sign out,
@@ -22,6 +23,8 @@ export default function ProfileMenu({ name, email, avatarUrl, onSignOut }) {
   const menuRef = useRef(null)
   const menuId = useId()
   const push = usePushNotifications()
+  const pwa = usePwaInstall()
+  const [showIosHelp, setShowIosHelp] = useState(false)
 
   async function handleSendTest() {
     setTestSent(false)
@@ -161,6 +164,26 @@ export default function ProfileMenu({ name, email, avatarUrl, onSignOut }) {
                 <p className="truncate text-body-sm font-medium text-on-surface">{name || 'Account'}</p>
                 {email && <p className="truncate text-body-sm text-on-surface-variant">{email}</p>}
               </div>
+
+              {(pwa.canInstall || pwa.iosInstructions) && (
+                <>
+                  <div role="separator" className="my-1 h-px bg-outline-variant/30" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={pwa.canInstall ? pwa.promptInstall : () => setShowIosHelp((prev) => !prev)}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-body-sm text-on-surface transition-colors hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <Download className="size-4" aria-hidden="true" />
+                    Install app
+                  </button>
+                  {showIosHelp && pwa.iosInstructions && (
+                    <p className="px-3 py-1 text-body-sm text-on-surface-variant">
+                      Tap Share, then &ldquo;Add to Home Screen&rdquo;.
+                    </p>
+                  )}
+                </>
+              )}
 
               {push.supported && (
                 <>
