@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { startTaskReminderScheduler } from './services/taskReminderService.js';
 import { startTaskCompletionReminderScheduler } from './services/taskCompletionReminderService.js';
 import { startTaskDueReminderScheduler } from './services/taskDueReminderService.js';
+import { startTimeSyncScheduler } from './services/timeSyncService.js';
 
 const app = createApp();
 
@@ -16,3 +17,4 @@ app.listen(config.port, () => {
 startTaskReminderScheduler();
 startTaskCompletionReminderScheduler();
 startTaskDueReminderScheduler();
+startTimeSyncScheduler();

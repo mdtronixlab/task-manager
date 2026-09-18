@@ -1,7 +1,15 @@
 import { createContext, useContext, useCallback, useEffect, useState } from 'react'
 import { getPublicSettings } from '../services/settings'
 
-const DEFAULTS = { applicationName: 'Organisation Task Manager', logoUrl: null }
+// `timezone` falls back to the browser's own zone until the real (org-
+// configured) value loads — same fallback lib/time.js's getOrgTimezone
+// itself uses server-side, so the sidebar clock never renders with no zone
+// at all while the fetch below is in flight.
+const DEFAULTS = {
+  applicationName: 'Organisation Task Manager',
+  logoUrl: null,
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+}
 
 const BrandingContext = createContext(null)
 
@@ -18,7 +26,11 @@ export function BrandingProvider({ children }) {
   const refresh = useCallback(async () => {
     try {
       const data = await getPublicSettings()
-      setBranding({ applicationName: data.applicationName, logoUrl: data.logoUrl })
+      setBranding({
+        applicationName: data.applicationName,
+        logoUrl: data.logoUrl,
+        timezone: data.timezone || DEFAULTS.timezone,
+      })
     } catch {
       setBranding(DEFAULTS)
     }

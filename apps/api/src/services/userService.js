@@ -10,6 +10,7 @@ import { requireString, requireEnum } from '../lib/validate.js';
 import { ValidationError, Forbidden, NotFound } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
 import { sendTestWhatsAppMessage, sendWelcomeWhatsApp, isWhatsAppConfigured } from './whatsappService.js';
+import { getVisibleAdminIds } from './adminVisibilityService.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Digits only, optional leading "+", 7-15 of them — loose enough to catch
@@ -100,9 +101,19 @@ export async function getUsers() {
   return users.map(shapeUser);
 }
 
-/** Returns the calling user's own profile. Any authenticated user. */
-export function getCurrentUser(currentUser) {
-  return shapeUser(currentUser);
+/**
+ * Returns the calling user's own profile. Any authenticated user.
+ * For an Admin, also includes `visibleAdminIds` — the other Admins' tasks
+ * they're currently allowed to see (adminVisibilityService) — so the
+ * frontend can filter its own "whose tasks" pickers without a second
+ * round trip. Omitted for Staff/Super Admin, who this never restricts.
+ */
+export async function getCurrentUser(currentUser) {
+  const shaped = shapeUser(currentUser);
+  if (currentUser.role === ROLES.ADMIN) {
+    shaped.visibleAdminIds = await getVisibleAdminIds(currentUser.userId);
+  }
+  return shaped;
 }
 
 /**

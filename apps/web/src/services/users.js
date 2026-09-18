@@ -26,3 +26,19 @@ export function updateUser(userId, data) {
 export function sendTestWhatsApp(userId) {
   return api.post(`/api/users/${userId}/test-whatsapp`)
 }
+
+/**
+ * GET /api/users/admin-visibility — Super Admin only. Every Admin's
+ * currently-granted-visible-Admins, as `{ [viewerUserId]: string[] }`.
+ */
+export function getAdminVisibility() {
+  return api.get('/api/users/admin-visibility')
+}
+
+/**
+ * PUT /api/users/:userId/admin-visibility — Super Admin only. Replaces the
+ * full set of other Admins' userIds `userId` (an Admin) may see tasks for.
+ */
+export function setAdminVisibility(userId, visibleAdminIds) {
+  return api.put(`/api/users/${userId}/admin-visibility`, { visibleAdminIds })
+}

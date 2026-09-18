@@ -7,6 +7,16 @@ export function getPublicSettings() {
   return api.get('/api/settings/public')
 }
 
+/**
+ * GET /api/settings/time — unauthenticated. `{ now }` is the actual server
+ * instant (ISO 8601) — ServerClock.jsx resyncs against this periodically
+ * rather than trusting the viewer's own (often wrong or drifted) system
+ * clock outright.
+ */
+export function getServerTime() {
+  return api.get('/api/settings/time')
+}
+
 /** @param {string} dataUri A `data:image/...;base64,...` URI. Super Admin only. */
 export function updateLogo(dataUri) {
   return api.patch('/api/settings/logo', { logo: dataUri })

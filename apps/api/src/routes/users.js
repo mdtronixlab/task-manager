@@ -3,13 +3,18 @@ import { ROLES, ADMIN_ROLES } from '../config.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { success } from '../lib/response.js';
 import { getUsers, getCurrentUser, createUser, updateUser, sendTestWhatsApp } from '../services/userService.js';
+import { getAllAdminVisibility, setAdminVisibility } from '../services/adminVisibilityService.js';
 
 const router = Router();
 
 router.use(authenticate);
 
-router.get('/me', (req, res) => {
-  res.json(success(getCurrentUser(req.user)));
+router.get('/me', async (req, res, next) => {
+  try {
+    res.json(success(await getCurrentUser(req.user)));
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Read-only for both elevated roles — Admin needs the roster to populate
@@ -34,6 +39,30 @@ router.post('/', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
 router.patch('/:userId', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
   try {
     res.json(success(await updateUser(req.user, req.params.userId, req.body), 'User updated.'));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Every Admin's granted-visible-Admins, keyed by viewer userId — Settings >
+// Visibility's table. Super Admin only.
+router.get('/admin-visibility', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    res.json(success(await getAllAdminVisibility()));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Replaces one Admin's full set of granted-visible-Admins. Super Admin only.
+router.put('/:userId/admin-visibility', requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {
+  try {
+    res.json(
+      success(
+        await setAdminVisibility(req.user, req.params.userId, req.body?.visibleAdminIds),
+        'Task visibility updated.',
+      ),
+    );
   } catch (err) {
     next(err);
   }

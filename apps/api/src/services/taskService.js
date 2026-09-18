@@ -7,6 +7,7 @@
 import { prisma } from '../db.js';
 import { ROLES, TASK_STATUS, TASK_PRIORITY, DEFAULT_PRIORITY, isElevatedRole } from '../config.js';
 import { generateTaskId } from '../lib/ids.js';
+import { getVisibleAdminIds } from './adminVisibilityService.js';
 import { today, resolveDateRange, addDays, assertWithinTaskDateWindow } from '../lib/time.js';
 import {
   requireString,
@@ -84,6 +85,23 @@ export async function getTasks(currentUser, params = {}) {
     // ASCII by default.
     ...(params.search ? { title: { contains: params.search } } : {}),
   };
+
+  // Admin-to-admin task visibility is Super Admin-gated (adminVisibilityService,
+  // prisma/schema.prisma's AdminTaskVisibility) — an Admin (not Super Admin)
+  // only ever sees: their own tasks, every Staff/Super-Admin-owned task
+  // (unrestricted, same as before), and other Admins' tasks only where
+  // explicitly granted. Combined with the `userId` filter above (an AND at
+  // the top level), this also transparently blocks an Admin from reaching a
+  // non-granted Admin's tasks via an explicit `?userId=` — that request just
+  // matches nothing, same as filtering by any other userId with no tasks.
+  if (isAdmin && currentUser.role !== ROLES.SUPER_ADMIN) {
+    const grantedAdminIds = await getVisibleAdminIds(currentUser.userId);
+    where.OR = [
+      { userId: currentUser.userId },
+      { user: { role: { not: ROLES.ADMIN } } },
+      ...(grantedAdminIds.length > 0 ? [{ userId: { in: grantedAdminIds } }] : []),
+    ];
+  }
 
   if (params.range) {
     // Named ranges (Today/Yesterday/This week/...) are resolved from the

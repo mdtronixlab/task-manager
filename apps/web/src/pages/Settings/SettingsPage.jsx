@@ -14,6 +14,7 @@ import {
   Users,
   Building2,
   Send,
+  Eye,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -24,6 +25,7 @@ import { updateLogo, removeLogo, downloadBackup, restoreBackup } from '../../ser
 import { getUsers, createUser, updateUser, sendTestWhatsApp } from '../../services/users'
 import { getDepartments, createDepartment, updateDepartment } from '../../services/departments'
 import { getCategories, createCategory, updateCategory } from '../../services/categories'
+import { ROLES } from '../../constants/roles'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../components/Card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/Table'
 import Button from '../../components/Button'
@@ -37,6 +39,7 @@ import DepartmentFormModal from '../../components/departments/DepartmentFormModa
 import CategoryFormModal from '../../components/categories/CategoryFormModal'
 import NotificationComposerCard from '../../components/notifications/NotificationComposerCard'
 import WhatsAppSettingsCard from '../../components/settings/WhatsAppSettingsCard'
+import AdminVisibilityCard from '../../components/settings/AdminVisibilityCard'
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
@@ -104,6 +107,7 @@ function TestWhatsAppButton({ onClick, label, busy }) {
 const SETTINGS_SECTIONS = [
   { id: 'branding', label: 'Branding', description: 'Logo shown in the header.', icon: Image, tone: 'primary' },
   { id: 'team', label: 'Team', description: 'Users, roles, and WhatsApp numbers.', icon: Users, tone: 'success' },
+  { id: 'visibility', label: 'Visibility', description: "Which Admins see which Admin's tasks.", icon: Eye, tone: 'primary' },
   { id: 'departments', label: 'Departments', description: 'Group staff and filter reports.', icon: Building2, tone: 'warning' },
   { id: 'categories', label: 'Categories', description: 'Classify tasks in the Add Task form.', icon: Tag, tone: 'neutral' },
   { id: 'database', label: 'Database', description: 'Backup and restore the live data.', icon: DatabaseBackup, tone: 'error' },
@@ -635,6 +639,23 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       )}
+
+      {activeSection === 'visibility' &&
+        (teamLoading ? (
+          <Card className="max-w-2xl">
+            <CardContent>
+              <LoadingState label="Loading team…" />
+            </CardContent>
+          </Card>
+        ) : teamError ? (
+          <Card className="max-w-2xl">
+            <CardContent>
+              <ErrorState description={teamError} onRetry={loadTeam} />
+            </CardContent>
+          </Card>
+        ) : (
+          <AdminVisibilityCard admins={users.filter((u) => u.role === ROLES.ADMIN)} />
+        ))}
 
       {activeSection === 'departments' && (
         <Card className="max-w-2xl">

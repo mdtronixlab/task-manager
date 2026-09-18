@@ -4,6 +4,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 import { success } from '../lib/response.js';
 import { getPublicSettings, updateLogo } from '../services/settingsService.js';
 import { createBackupFile, deleteBackupFile, restoreFromBackup, createReadStream, MAX_RESTORE_BYTES } from '../services/backupService.js';
+import { syncedNow } from '../services/timeSyncService.js';
 
 const router = Router();
 
@@ -16,6 +17,18 @@ router.get('/public', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// The actual current instant, ISO 8601 — same "never trust the viewer's own
+// clock" reasoning as lib/time.js's server-authoritative date helpers
+// (rules.md §18/§19), applied to the sidebar's live clock (ServerClock.jsx):
+// a browser's system clock routinely drifts or is just set wrong, so it
+// periodically re-syncs against this instead of trusting its own Date.now()
+// outright. `syncedNow()` (timeSyncService.js) is this *process's* clock
+// corrected against a public time server, not the host's raw system clock —
+// in case that's wrong too.
+router.get('/time', (req, res) => {
+  res.json(success({ now: syncedNow().toISOString() }));
 });
 
 router.patch('/logo', authenticate, requireRole(ROLES.SUPER_ADMIN), async (req, res, next) => {

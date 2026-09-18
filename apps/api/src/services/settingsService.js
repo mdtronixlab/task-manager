@@ -13,6 +13,7 @@
 import { prisma } from '../db.js';
 import { ValidationError } from '../lib/errors.js';
 import { logActivity } from '../activityLog.js';
+import { getOrgTimezone } from '../lib/time.js';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2MB raw (~2.7MB as base64)
 const LOGO_DATA_URI_PATTERN = /^data:image\/(png|jpeg|webp|svg\+xml);base64,([A-Za-z0-9+/]+=*)$/;
@@ -20,7 +21,10 @@ const LOGO_DATA_URI_PATTERN = /^data:image\/(png|jpeg|webp|svg\+xml);base64,([A-
 /**
  * Settings any client needs to render the app's identity — deliberately
  * unauthenticated (like /api/health) since the login page needs this
- * before any session exists, and none of it is sensitive.
+ * before any session exists, and none of it is sensitive. `timezone` is the
+ * org's configured IANA zone (lib/time.js's getOrgTimezone, same source
+ * taskDate/today() use) — lets the sidebar clock show the organisation's
+ * time rather than each viewer's own browser timezone.
  */
 export async function getPublicSettings() {
   const rows = await prisma.setting.findMany({ where: { key: { in: ['APPLICATION_NAME', 'APP_LOGO'] } } });
@@ -28,6 +32,7 @@ export async function getPublicSettings() {
   return {
     applicationName: byKey.APPLICATION_NAME || 'Organisation Task Manager',
     logoUrl: byKey.APP_LOGO || null,
+    timezone: await getOrgTimezone(),
   };
 }
 

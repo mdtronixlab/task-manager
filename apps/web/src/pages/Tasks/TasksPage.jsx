@@ -7,6 +7,7 @@ import { getCategories } from '../../services/categories'
 import { defaultTaskFilters, buildTaskQueryParams } from '../../utils/taskFilters'
 import { ROLES } from '../../constants/roles'
 import { describeTaskDateIfNotToday } from '../../constants/taskDate'
+import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../context/ToastContext'
 import Button from '../../components/Button'
 import TaskFilters from '../../components/tasks/TaskFilters'
@@ -23,6 +24,7 @@ import ErrorState from '../../components/ErrorState'
 // here too — the backend already allowed both (taskService.js's
 // isOwner || isAdmin), this just exposes it.
 export default function TasksPage() {
+  const { appUser } = useAuth()
   const [filters, setFilters] = useState(defaultTaskFilters)
   const [tasks, setTasks] = useState([])
   const [allUsers, setAllUsers] = useState([])
@@ -88,6 +90,19 @@ export default function TasksPage() {
   // deactivated — but the assign-to picker shouldn't offer them: the
   // backend rejects assigning a new task to a disabled account.
   const assignableStaff = useMemo(() => staff.filter((s) => s.active), [staff])
+  // The "Staff" filter dropdown (unlike the assign-to picker above, which
+  // stays unrestricted — creating/assigning tasks was never gated) hides
+  // other Admins this Admin hasn't been granted visibility into
+  // (adminVisibilityService) — picking one would otherwise just come back
+  // empty, since getTasks already excludes their tasks server-side. Self and
+  // every Staff member are always kept; Super Admin sees everyone, as before.
+  const visibleStaff = useMemo(() => {
+    if (appUser?.role !== ROLES.ADMIN) return staff
+    const visibleAdminIds = new Set(appUser.visibleAdminIds || [])
+    return staff.filter(
+      (s) => s.role !== ROLES.ADMIN || s.userId === appUser.userId || visibleAdminIds.has(s.userId),
+    )
+  }, [staff, appUser])
   const categoriesById = useMemo(
     () => Object.fromEntries(categories.map((c) => [c.categoryId, c.name])),
     [categories],
@@ -160,7 +175,7 @@ export default function TasksPage() {
       <TaskFilters
         filters={filters}
         onChange={setFilters}
-        staff={staff}
+        staff={visibleStaff}
         departments={departments}
         categories={categories}
       />

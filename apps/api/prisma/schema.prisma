@@ -45,8 +45,28 @@ model User {
   activityLogs        ActivityLog[]
   pushSubscriptions   PushSubscription[]
   whatsAppMessageLogs WhatsAppMessageLog[]
+  visibleAdminGrants  AdminTaskVisibility[] @relation("AdminVisibilityViewer")
+  grantedToAdmins     AdminTaskVisibility[] @relation("AdminVisibilityTarget")
 
   @@map("users")
+}
+
+// Super Admin-controlled: which other ADMIN-role users' tasks a given Admin
+// is allowed to see on the org-wide Tasks list (extends rules.md §14 — an
+// Admin's view of *another Admin's* tasks is now opt-in per pair, granted
+// here; Staff-owned tasks and a Super Admin's own view stay unrestricted,
+// see taskService.js's getTasks). One row = "viewer may see target's tasks".
+model AdminTaskVisibility {
+  id        Int      @id @default(autoincrement())
+  viewerId  String
+  targetId  String
+  createdAt DateTime @default(now())
+
+  viewer User @relation("AdminVisibilityViewer", fields: [viewerId], references: [userId], onDelete: Cascade)
+  target User @relation("AdminVisibilityTarget", fields: [targetId], references: [userId], onDelete: Cascade)
+
+  @@unique([viewerId, targetId])
+  @@map("admin_task_visibility")
 }
 
 // rules.md §20/§21 — allowed status/priority values enforced in application

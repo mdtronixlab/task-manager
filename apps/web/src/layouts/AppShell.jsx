@@ -5,6 +5,7 @@ import { useAnimationReplay } from '../hooks/useAnimationReplay'
 import Logo from '../components/Logo'
 import ProfileMenu from '../components/ProfileMenu'
 import ThemeToggle from '../components/ThemeToggle'
+import ServerClock from '../components/ServerClock'
 import PushNotificationBanner from '../components/PushNotificationBanner'
 
 // Desktop sidebar link: icon + label side by side. Active state is a
@@ -128,7 +129,10 @@ export default function AppShell({ navLinks, maxWidthClassName = 'max-w-5xl', br
             </NavLink>
           ))}
         </nav>
-        <div className="flex items-center justify-between gap-2 border-t border-outline-variant/30 px-1 pt-3">
+        <div className="border-t border-outline-variant/30 px-2 pt-3">
+          <ServerClock />
+        </div>
+        <div className="flex items-center justify-between gap-2 px-1 pt-3">
           {profileMenu}
           <ThemeToggle />
         </div>
